@@ -32,11 +32,13 @@ export default function App() {
     WT: true,
     TC: true,
     ET: true,
+    brain: true,
   });
   const [opacities, setOpacities] = useState({
     WT: 0.35,
     TC: 0.65,
     ET: 0.85,
+    brain: 0.18,
   });
   const [wireframe, setWireframe] = useState(false);
 
@@ -90,7 +92,7 @@ export default function App() {
       clearTimeout(stepTimer2);
 
       setPredictionResult(result);
-      setVisibleRegions({ WT: true, TC: true, ET: true });
+      setVisibleRegions({ WT: true, TC: true, ET: true, brain: true });
 
       if (result?.default_crosshair) {
         setCrosshair({
@@ -167,6 +169,7 @@ export default function App() {
             opacities={opacities}
             setOpacities={setOpacities}
             metrics={predictionResult?.metrics}
+            hasBrain={!!(predictionResult?.regions?.brain || predictionResult?.brain)}
             wireframe={wireframe}
             setWireframe={setWireframe}
             onResetView={handleResetView}

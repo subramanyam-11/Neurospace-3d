@@ -101,8 +101,8 @@ async def predict_mri(
         print("[NeuroScope] Calculating region metrics...")
         metrics = calculate_region_metrics(wt_mask, tc_mask, et_mask, affine)
 
-        print("[NeuroScope] Generating 3D meshes in physical coordinates...")
-        meshes = generate_all_region_meshes(wt_mask, tc_mask, et_mask, affine)
+        print("[NeuroScope] Generating 3D meshes in physical coordinates (tumour subregions and patient-specific brain surface)...")
+        meshes = generate_all_region_meshes(wt_mask, tc_mask, et_mask, affine, t1_data=raw_volumes.get("t1"))
 
         # Multi-label volume
         label_map = create_brats_label_map(wt_mask, tc_mask, et_mask)
@@ -171,6 +171,7 @@ async def predict_mri(
             },
             "metrics": metrics,
             "regions": meshes,
+            "brain": meshes.get("brain"),
         }
 
         # Cache in memory (keep last 5 jobs)

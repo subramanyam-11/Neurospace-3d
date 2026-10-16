@@ -7,16 +7,33 @@ const REGION_CONFIG = {
     color: 0x38bdf8, // Ice Blue / Cyan
     name: "Whole Tumour",
     depthWrite: false,
+    renderOrder: 2,
+    roughness: 0.35,
+    metalness: 0.15,
   },
   TC: {
     color: 0xf59e0b, // Amber / Orange
     name: "Tumour Core",
     depthWrite: false,
+    renderOrder: 3,
+    roughness: 0.35,
+    metalness: 0.15,
   },
   ET: {
     color: 0xef4444, // Crimson / Bright Red
     name: "Enhancing Tumour",
     depthWrite: true,
+    renderOrder: 4,
+    roughness: 0.35,
+    metalness: 0.15,
+  },
+  brain: {
+    color: 0x94a3b8, // Slate / cortical anatomical shell
+    name: "Patient-specific MRI anatomy",
+    depthWrite: false,
+    renderOrder: 1,
+    roughness: 0.55,
+    metalness: 0.05,
   },
 };
 
@@ -238,8 +255,9 @@ export default function Viewer3D({
 
     boundingInfoRef.current = { center, maxDim };
 
-    // Create a mesh for each region
-    ["WT", "TC", "ET"].forEach((regionKey) => {
+    // Create a mesh for each region (patient-specific brain anatomy shell and tumour subregions)
+    const regionKeys = ["brain", "WT", "TC", "ET"];
+    regionKeys.forEach((regionKey) => {
       const regionData = regions[regionKey];
       if (!regionData?.vertices?.length || !regionData?.faces?.length) return;
 
@@ -249,13 +267,14 @@ export default function Viewer3D({
       geometry.setIndex(regionData.faces.flat());
       geometry.computeVertexNormals();
 
-      const cfg = REGION_CONFIG[regionKey] || { color: 0xffffff, depthWrite: true };
+      const cfg = REGION_CONFIG[regionKey] || { color: 0xffffff, depthWrite: true, renderOrder: 0 };
+      const defaultOpacity = regionKey === "brain" ? 0.18 : 0.7;
       const material = new THREE.MeshStandardMaterial({
         color: cfg.color,
-        roughness: 0.35,
-        metalness: 0.15,
+        roughness: cfg.roughness ?? 0.35,
+        metalness: cfg.metalness ?? 0.15,
         transparent: true,
-        opacity: opacities[regionKey] ?? 0.7,
+        opacity: opacities[regionKey] ?? defaultOpacity,
         wireframe: wireframe,
         side: THREE.DoubleSide,
         depthWrite: cfg.depthWrite,
@@ -263,6 +282,7 @@ export default function Viewer3D({
 
       const mesh = new THREE.Mesh(geometry, material);
       mesh.name = regionKey;
+      mesh.renderOrder = cfg.renderOrder ?? 0;
       mesh.visible = visibleRegions[regionKey] !== false;
       group.add(mesh);
       meshesRef.current[regionKey] = mesh;
@@ -296,11 +316,12 @@ export default function Viewer3D({
 
   // 4. Update visibility, opacity & wireframe without rebuilding geometry
   useEffect(() => {
-    ["WT", "TC", "ET"].forEach((regionKey) => {
+    ["brain", "WT", "TC", "ET"].forEach((regionKey) => {
       const mesh = meshesRef.current[regionKey];
       if (mesh && mesh.material) {
         mesh.visible = visibleRegions[regionKey] !== false;
-        mesh.material.opacity = opacities[regionKey] ?? 0.7;
+        const defaultOpacity = regionKey === "brain" ? 0.18 : 0.7;
+        mesh.material.opacity = opacities[regionKey] ?? defaultOpacity;
         mesh.material.wireframe = wireframe;
         mesh.material.needsUpdate = true;
       }
@@ -362,6 +383,13 @@ export default function Viewer3D({
             <span style={{ color: "var(--accent-red)", fontWeight: 600 }}>ET</span>
             <span style={{ color: "var(--text-dim)" }}>Enhancing Tumour</span>
           </div>
+          {regions.brain && (
+            <div className="legend-item" style={{ borderTop: "1px solid rgba(255, 255, 255, 0.08)", paddingTop: "4px", marginTop: "4px" }}>
+              <span className="region-color-dot dot-brain" />
+              <span style={{ color: "#cbd5e1", fontWeight: 600 }}>Brain</span>
+              <span style={{ color: "var(--text-dim)", fontSize: "0.72rem" }}>Patient-specific MRI anatomy</span>
+            </div>
+          )}
         </div>
       )}
 

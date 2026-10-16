@@ -90,7 +90,7 @@ export default function UploadPanel({
                 Browse
                 <input
                   type="file"
-                  accept=".nii,.nii.gz"
+                  accept="*/*"
                   onChange={(e) => handleFileChange(mod.key, e)}
                   disabled={isProcessing}
                   style={{ display: "none" }}

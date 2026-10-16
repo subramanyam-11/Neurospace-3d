@@ -11,6 +11,7 @@ from evaluation.evaluate_anisotropy import run_anisotropy_tests
 from evaluation.evaluate_crosshair import run_crosshair_tests
 from evaluation.evaluate_robustness import run_robustness_tests
 from evaluation.evaluate_reproducibility import run_reproducibility_tests
+from evaluation.evaluate_brain_surface import run_brain_surface_tests
 from evaluation.evaluate_segmentation import run_all_segmentation_evaluations
 
 def main():
@@ -35,7 +36,10 @@ def main():
     # 5. Reproducibility & Determinism Tests
     reproducibility_results = run_reproducibility_tests()
 
-    # 6. Held-out Segmentation Evaluation on 11 BraTS Cases
+    # 6. Patient-Specific 3D Brain Anatomy Surface Tests
+    brain_surface_results = run_brain_surface_tests()
+
+    # 7. Held-out Segmentation Evaluation on 11 BraTS Cases
     seg_results = run_all_segmentation_evaluations()
 
     total_duration = round(time.time() - start_time, 2)
@@ -64,6 +68,10 @@ def main():
             "reproducibility": {
                 "status": "PASS" if all(r["status"] == "PASS" for r in reproducibility_results) else "FAIL",
                 "tests": reproducibility_results,
+            },
+            "patient_specific_brain_anatomy": {
+                "status": "PASS" if all(r["status"] == "PASS" for r in brain_surface_results) else "FAIL",
+                "tests": brain_surface_results,
             },
             "held_out_segmentation": {
                 "status": "PASS",

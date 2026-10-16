@@ -27,6 +27,7 @@ export default function ControlsPanel({
   opacities,
   setOpacities,
   metrics,
+  hasBrain = true,
   wireframe,
   setWireframe,
   onResetView,
@@ -51,6 +52,60 @@ export default function ControlsPanel({
         <button onClick={onResetView} className="btn-reset-view">
           Reset View
         </button>
+      </div>
+
+      {/* Patient-Specific Brain Anatomy Shell Section */}
+      <div className="anatomy-section" style={{ marginBottom: "14px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+          <span style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)", fontWeight: 600 }}>
+            Patient Anatomy Shell
+          </span>
+          <span className="badge-patient-anatomy">
+            Patient-specific MRI anatomy
+          </span>
+        </div>
+
+        <div
+          className={`region-card ${visibleRegions.brain !== false ? "active" : "inactive"}`}
+          style={{ borderColor: visibleRegions.brain !== false ? "rgba(148, 163, 184, 0.45)" : "var(--border-color)" }}
+        >
+          <div className="region-header">
+            <label className="region-checkbox-label">
+              <input
+                type="checkbox"
+                checked={visibleRegions.brain !== false}
+                onChange={() => toggleRegion("brain")}
+                style={{ cursor: "pointer" }}
+              />
+              <span className="region-color-dot dot-brain" />
+              <span style={{ fontWeight: 600 }}>Brain Surface</span>
+            </label>
+            <span className="volume-tag" style={{ background: "rgba(148, 163, 184, 0.15)", color: "#cbd5e1" }}>
+              T1 Volume
+            </span>
+          </div>
+
+          <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", margin: "2px 0 8px 24px" }}>
+            Translucent reference shell extracted from patient T1 MRI
+          </div>
+
+          {/* Opacity Control */}
+          <div className="slider-container">
+            <span>Opacity</span>
+            <input
+              type="range"
+              min="0.05"
+              max="1.0"
+              step="0.01"
+              value={opacities.brain ?? 0.18}
+              disabled={visibleRegions.brain === false}
+              onChange={(e) => handleOpacityChange("brain", e.target.value)}
+            />
+            <span className="slider-val">
+              {Math.round((opacities.brain ?? 0.18) * 100)}%
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Region Toggles and Opacity Sliders */}

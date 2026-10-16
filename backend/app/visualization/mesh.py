@@ -1,5 +1,7 @@
 import numpy as np
+import scipy.ndimage as ndi
 from skimage import measure
+from typing import Optional, Dict, Any
 
 def generate_surface_mesh(mask: np.ndarray, affine: np.ndarray, region_name: str, step_size: int = 1) -> dict:
     """
@@ -30,7 +32,8 @@ def generate_surface_mesh(mask: np.ndarray, affine: np.ndarray, region_name: str
     trans[trans == 0] = 0.0
 
     # (N, 3) @ (3, 3).T + (3,)
-    world_verts = (verts.astype(np.float32) @ rot_zoom.T) + trans
+    with np.errstate(all="ignore"):
+        world_verts = (verts.astype(np.float32) @ rot_zoom.T) + trans
 
     # Calculate physical bounding box
     bbox_min = world_verts.min(axis=0).tolist()
@@ -48,12 +51,112 @@ def generate_surface_mesh(mask: np.ndarray, affine: np.ndarray, region_name: str
         },
     }
 
-def generate_all_region_meshes(wt_mask: np.ndarray, tc_mask: np.ndarray, et_mask: np.ndarray, affine: np.ndarray) -> dict:
+def extract_brain_mask(t1_data: np.ndarray) -> np.ndarray:
+    """
+    Extracts a patient-specific brain mask from the uploaded patient's T1 NIfTI volume
+    using intensity thresholding, largest connected component extraction,
+    and morphological hole-filling and closing.
+    """
+    if t1_data is None or t1_data.size == 0 or not np.isfinite(t1_data).any():
+        return np.zeros((0, 0, 0), dtype=bool)
+
+    non_zero = t1_data[t1_data > 0]
+    if len(non_zero) == 0:
+        return np.zeros(t1_data.shape, dtype=bool)
+
+    # For pre-stripped / skull-stripped datasets (like BraTS benchmarks), background is strictly 0.
+    # For raw T1 volumes with air background noise, determine a foreground threshold.
+    zero_fraction = float((t1_data == 0).sum()) / t1_data.size
+    if zero_fraction > 0.15:
+        initial_mask = t1_data > 0
+    else:
+        p5 = float(np.percentile(non_zero, 5))
+        p50 = float(np.percentile(non_zero, 50))
+        thresh = p5 + 0.15 * (p50 - p5)
+        initial_mask = t1_data > thresh
+
+    # Extract largest connected component to eliminate disconnected noise / scanner artifacts
+    labeled, num_features = ndi.label(initial_mask)
+    if num_features > 0:
+        sizes = ndi.sum(initial_mask, labeled, range(1, num_features + 1))
+        largest_label = int(np.argmax(sizes) + 1)
+        brain_mask = (labeled == largest_label)
+    else:
+        brain_mask = initial_mask
+
+    # Morphological closing to bridge sulcal fissures and fill internal ventricles
+    brain_mask = ndi.binary_closing(brain_mask, structure=np.ones((3, 3, 3), dtype=bool), iterations=2)
+    brain_mask = ndi.binary_fill_holes(brain_mask)
+    return brain_mask
+
+def generate_brain_mesh(t1_data: np.ndarray, affine: np.ndarray, step_size: int = 2) -> dict:
+    """
+    Generates a patient-specific anatomical 3D brain surface mesh from the uploaded patient's T1 NIfTI volume.
+    The surface is extracted via Marching Cubes and transformed into physical / world coordinates (mm)
+    using the exact same NIfTI affine matrix as the tumour meshes.
+    """
+    print("[NeuroScope] Extracting patient-specific brain anatomy mask from T1 volume...")
+    brain_mask = extract_brain_mask(t1_data)
+
+    if brain_mask.sum() == 0:
+        return {
+            "region": "brain",
+            "name": "Patient-specific MRI anatomy",
+            "vertices": [],
+            "faces": [],
+            "vertex_count": 0,
+            "face_count": 0,
+            "bbox": None,
+        }
+
+    # Smooth the binary volume slightly with a Gaussian filter to generate an organic cortical surface
+    smooth_vol = ndi.gaussian_filter(brain_mask.astype(np.float32), sigma=1.0)
+
+    # Marching cubes isosurface extraction at level 0.5
+    verts, faces, normals, values = measure.marching_cubes(
+        smooth_vol, level=0.5, step_size=step_size
+    )
+
+    # Affine transformation to physical / world coordinates (mm)
+    rot_zoom = np.ascontiguousarray(affine[:3, :3], dtype=np.float32)
+    trans = np.ascontiguousarray(affine[:3, 3], dtype=np.float32)
+    rot_zoom[rot_zoom == 0] = 0.0
+    trans[trans == 0] = 0.0
+
+    with np.errstate(all="ignore"):
+        world_verts = (verts.astype(np.float32) @ rot_zoom.T) + trans
+
+    bbox_min = world_verts.min(axis=0).tolist()
+    bbox_max = world_verts.max(axis=0).tolist()
+
+    mesh_result = {
+        "region": "brain",
+        "name": "Patient-specific MRI anatomy",
+        "vertices": np.round(world_verts, 2).tolist(),
+        "faces": faces.astype(int).tolist(),
+        "vertex_count": int(world_verts.shape[0]),
+        "face_count": int(faces.shape[0]),
+        "bbox": {
+            "min": [round(x, 2) for x in bbox_min],
+            "max": [round(x, 2) for x in bbox_max],
+        },
+    }
+    print(f"[NeuroScope] Brain surface mesh: {mesh_result['vertex_count']:,} vertices, {mesh_result['face_count']:,} faces")
+    return mesh_result
+
+def generate_all_region_meshes(
+    wt_mask: np.ndarray,
+    tc_mask: np.ndarray,
+    et_mask: np.ndarray,
+    affine: np.ndarray,
+    t1_data: Optional[np.ndarray] = None
+) -> dict:
     """
     Generates world-coordinate surface meshes for all 3 suspected tumour subregions:
     - WT (Whole Tumour)
     - TC (Tumour Core)
     - ET (Enhancing Tumour)
+    And optionally generates the patient-specific anatomical brain surface if t1_data is provided.
     """
     print("[NeuroScope] Generating WT mesh...")
     wt_mesh = generate_surface_mesh(wt_mask, affine, "WT")
@@ -67,8 +170,14 @@ def generate_all_region_meshes(wt_mask: np.ndarray, tc_mask: np.ndarray, et_mask
     et_mesh = generate_surface_mesh(et_mask, affine, "ET")
     print(f"[NeuroScope] ET mesh: {et_mesh['vertex_count']:,} vertices, {et_mesh['face_count']:,} faces")
 
-    return {
+    result = {
         "WT": wt_mesh,
         "TC": tc_mesh,
         "ET": et_mesh,
     }
+
+    if t1_data is not None:
+        brain_mesh = generate_brain_mesh(t1_data, affine)
+        result["brain"] = brain_mesh
+
+    return result
