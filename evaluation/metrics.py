@@ -93,3 +93,16 @@ def extract_ground_truth_subregions(seg: np.ndarray) -> dict:
         "TC": gt_tc,
         "ET": gt_et,
     }
+
+def compute_hd95(pred: np.ndarray, gt: np.ndarray, affine: np.ndarray = None, spacing: tuple = None) -> float:
+    """
+    Computes 95th-percentile Hausdorff Distance (HD95) in mm, accounting for anisotropic voxel spacing.
+    Spacing is either passed directly as a tuple (sx, sy, sz) in mm or derived from affine column norms.
+    """
+    from backend.app.postprocessing.agreement import compute_anisotropic_hd95
+    if affine is None:
+        if spacing is None:
+            spacing = (1.0, 1.0, 1.0)
+        affine = np.diag([spacing[0], spacing[1], spacing[2], 1.0])
+    return compute_anisotropic_hd95(pred, gt, affine)
+

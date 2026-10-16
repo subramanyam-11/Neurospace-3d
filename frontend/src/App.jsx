@@ -18,7 +18,13 @@ export default function App() {
     t1gd: null,
     t2: null,
     flair: null,
+    expert_mask: null,
   });
+  const [useTta, setUseTta] = useState(false);
+  const [viewMode, setViewMode] = useState("predicted"); // "predicted", "expert", "agreement"
+  const [showDisagreement, setShowDisagreement] = useState(false);
+  const [disagreementOpacity, setDisagreementOpacity] = useState(0.70);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState("");
   const [error, setError] = useState(null);
@@ -33,12 +39,18 @@ export default function App() {
     TC: true,
     ET: true,
     brain: true,
+    TP: true,
+    FP: true,
+    FN: true,
   });
   const [opacities, setOpacities] = useState({
     WT: 0.35,
     TC: 0.65,
     ET: 0.85,
     brain: 0.18,
+    TP: 0.85,
+    FP: 0.65,
+    FN: 0.55,
   });
   const [wireframe, setWireframe] = useState(false);
 
@@ -74,7 +86,11 @@ export default function App() {
       setProcessingStep("Uploading NIfTI volumes & validating headers...");
 
       const stepTimer1 = setTimeout(() => {
-        setProcessingStep("Running pretrained SegResNet (MPS GPU accelerated)...");
+        setProcessingStep(
+          useTta
+            ? "Running SegResNet with Test-Time Augmentation (deterministic passes)..."
+            : "Running pretrained SegResNet (MPS GPU accelerated)..."
+        );
       }, 1500);
 
       const stepTimer2 = setTimeout(() => {
@@ -86,13 +102,17 @@ export default function App() {
         t1gdFile: files.t1gd,
         t2File: files.t2,
         flairFile: files.flair,
+        expertMaskFile: files.expert_mask,
+        useTta: useTta,
       });
 
       clearTimeout(stepTimer1);
       clearTimeout(stepTimer2);
 
       setPredictionResult(result);
-      setVisibleRegions({ WT: true, TC: true, ET: true, brain: true });
+      setViewMode(result?.has_expert ? "agreement" : "predicted");
+      setShowDisagreement(Boolean(result?.tta?.enabled));
+      setVisibleRegions({ WT: true, TC: true, ET: true, brain: true, TP: true, FP: true, FN: true });
 
       if (result?.default_crosshair) {
         setCrosshair({
@@ -157,6 +177,8 @@ export default function App() {
           <UploadPanel
             files={files}
             setFiles={setFiles}
+            useTta={useTta}
+            setUseTta={setUseTta}
             onPredict={handlePredict}
             isProcessing={isProcessing}
             processingStep={processingStep}
@@ -168,8 +190,13 @@ export default function App() {
             setVisibleRegions={setVisibleRegions}
             opacities={opacities}
             setOpacities={setOpacities}
-            metrics={predictionResult?.metrics}
-            hasBrain={!!(predictionResult?.regions?.brain || predictionResult?.brain)}
+            predictionResult={predictionResult}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            showDisagreement={showDisagreement}
+            setShowDisagreement={setShowDisagreement}
+            disagreementOpacity={disagreementOpacity}
+            setDisagreementOpacity={setDisagreementOpacity}
             wireframe={wireframe}
             setWireframe={setWireframe}
             onResetView={handleResetView}
@@ -181,6 +208,9 @@ export default function App() {
         <section style={{ display: "flex", flexDirection: "column" }}>
           <Viewer3D
             regions={predictionResult?.regions}
+            expertMeshes={predictionResult?.expert_meshes}
+            agreementMeshes={predictionResult?.agreement_meshes}
+            viewMode={viewMode}
             visibleRegions={visibleRegions}
             opacities={opacities}
             wireframe={wireframe}
@@ -200,6 +230,9 @@ export default function App() {
             worldCoord={crosshair.world}
             visibleRegions={visibleRegions}
             opacities={opacities}
+            viewMode={viewMode}
+            showDisagreement={showDisagreement}
+            disagreementOpacity={disagreementOpacity}
             onCrosshairChange={handleCrosshairChange}
             onCenterTumour={handleCenterTumour}
           />

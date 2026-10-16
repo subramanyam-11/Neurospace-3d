@@ -27,8 +27,33 @@ const REGION_CONFIG = {
     roughness: 0.35,
     metalness: 0.15,
   },
+  // Agreement Mode subregions
+  TP: {
+    color: 0x10b981, // Vibrant Emerald Green
+    name: "True Positive (pred ∩ expert)",
+    depthWrite: true,
+    renderOrder: 4,
+    roughness: 0.35,
+    metalness: 0.15,
+  },
+  FP: {
+    color: 0x8b5cf6, // Violet / Purple
+    name: "False Positive (pred - expert)",
+    depthWrite: false,
+    renderOrder: 3,
+    roughness: 0.35,
+    metalness: 0.15,
+  },
+  FN: {
+    color: 0xf59e0b, // Amber / Coral
+    name: "False Negative (expert - pred)",
+    depthWrite: false,
+    renderOrder: 2,
+    roughness: 0.35,
+    metalness: 0.15,
+  },
   brain: {
-    color: 0x94a3b8, // Slate / cortical anatomical shell
+    color: 0x94a3b8, // Slate cortical anatomical shell
     name: "Patient-specific MRI anatomy",
     depthWrite: false,
     renderOrder: 1,
@@ -101,8 +126,11 @@ function createCrosshairMarker() {
 
 export default function Viewer3D({
   regions = null,
-  visibleRegions = { WT: true, TC: true, ET: true },
-  opacities = { WT: 0.35, TC: 0.65, ET: 0.85 },
+  expertMeshes = null,
+  agreementMeshes = null,
+  viewMode = "predicted", // "predicted", "expert", "agreement"
+  visibleRegions = { WT: true, TC: true, ET: true, brain: true, TP: true, FP: true, FN: true },
+  opacities = { WT: 0.35, TC: 0.65, ET: 0.85, brain: 0.18, TP: 0.85, FP: 0.65, FN: 0.55 },
   wireframe = false,
   onResetViewRef = null,
   worldCrosshair = null,
@@ -173,7 +201,7 @@ export default function Viewer3D({
     dirLight3.position.set(0, -100, 100);
     scene.add(dirLight3);
 
-    // Root group for all tumour subregion meshes
+    // Root group for all surface meshes
     const group = new THREE.Group();
     scene.add(group);
     groupRef.current = group;
@@ -209,7 +237,7 @@ export default function Viewer3D({
     };
   }, []);
 
-  // 2. Build or rebuild meshes when `regions` data updates
+  // 2. Build or rebuild meshes when active mesh source or viewMode updates
   useEffect(() => {
     const group = groupRef.current;
     if (!group) return;
@@ -223,14 +251,34 @@ export default function Viewer3D({
     }
     meshesRef.current = {};
 
-    if (!regions) return;
+    // Select active mesh dictionary based on viewMode
+    let activeMeshes = {};
+    if (viewMode === "agreement" && agreementMeshes) {
+      activeMeshes = {
+        TP: agreementMeshes.TP,
+        FP: agreementMeshes.FP,
+        FN: agreementMeshes.FN,
+        brain: regions?.brain,
+      };
+    } else if (viewMode === "expert" && expertMeshes) {
+      activeMeshes = {
+        WT: expertMeshes.WT,
+        TC: expertMeshes.TC,
+        ET: expertMeshes.ET,
+        brain: regions?.brain,
+      };
+    } else {
+      activeMeshes = regions || {};
+    }
+
+    if (!activeMeshes || Object.keys(activeMeshes).length === 0) return;
 
     // Determine collective bounding box in physical mm
     let minCoord = new THREE.Vector3(Infinity, Infinity, Infinity);
     let maxCoord = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
     let hasGeometry = false;
 
-    Object.entries(regions).forEach(([key, regionData]) => {
+    Object.entries(activeMeshes).forEach(([key, regionData]) => {
       if (!regionData?.vertices?.length || !regionData?.faces?.length) return;
 
       regionData.vertices.forEach(([x, y, z]) => {
@@ -252,13 +300,15 @@ export default function Viewer3D({
 
     // Center the group in the scene coordinates
     group.position.set(-center.x, -center.y, -center.z);
-
     boundingInfoRef.current = { center, maxDim };
 
-    // Create a mesh for each region (patient-specific brain anatomy shell and tumour subregions)
-    const regionKeys = ["brain", "WT", "TC", "ET"];
-    regionKeys.forEach((regionKey) => {
-      const regionData = regions[regionKey];
+    // Keys to render depending on mode
+    const renderKeys = viewMode === "agreement"
+      ? ["brain", "FN", "FP", "TP"]
+      : ["brain", "WT", "TC", "ET"];
+
+    renderKeys.forEach((regionKey) => {
+      const regionData = activeMeshes[regionKey];
       if (!regionData?.vertices?.length || !regionData?.faces?.length) return;
 
       const geometry = new THREE.BufferGeometry();
@@ -268,7 +318,7 @@ export default function Viewer3D({
       geometry.computeVertexNormals();
 
       const cfg = REGION_CONFIG[regionKey] || { color: 0xffffff, depthWrite: true, renderOrder: 0 };
-      const defaultOpacity = regionKey === "brain" ? 0.18 : 0.7;
+      const defaultOpacity = regionKey === "brain" ? 0.18 : 0.75;
       const material = new THREE.MeshStandardMaterial({
         color: cfg.color,
         roughness: cfg.roughness ?? 0.35,
@@ -297,9 +347,9 @@ export default function Viewer3D({
       marker.visible = true;
     }
 
-    // Frame the camera nicely
+    // Frame camera
     resetCamera(maxDim);
-  }, [regions]);
+  }, [regions, expertMeshes, agreementMeshes, viewMode]);
 
   // 3. Update 3D Crosshair Marker position when worldCrosshair changes
   useEffect(() => {
@@ -316,11 +366,11 @@ export default function Viewer3D({
 
   // 4. Update visibility, opacity & wireframe without rebuilding geometry
   useEffect(() => {
-    ["brain", "WT", "TC", "ET"].forEach((regionKey) => {
+    ["brain", "WT", "TC", "ET", "TP", "FP", "FN"].forEach((regionKey) => {
       const mesh = meshesRef.current[regionKey];
       if (mesh && mesh.material) {
         mesh.visible = visibleRegions[regionKey] !== false;
-        const defaultOpacity = regionKey === "brain" ? 0.18 : 0.7;
+        const defaultOpacity = regionKey === "brain" ? 0.18 : 0.75;
         mesh.material.opacity = opacities[regionKey] ?? defaultOpacity;
         mesh.material.wireframe = wireframe;
         mesh.material.needsUpdate = true;
@@ -328,7 +378,6 @@ export default function Viewer3D({
     });
   }, [visibleRegions, opacities, wireframe]);
 
-  // Camera reset helper
   const resetCamera = (dim) => {
     const camera = cameraRef.current;
     const controls = controlsRef.current;
@@ -346,12 +395,14 @@ export default function Viewer3D({
     onResetViewRef.current = () => resetCamera();
   }
 
+  const hasAnyMesh = Boolean(regions || expertMeshes || agreementMeshes);
+
   return (
     <div className="viewport-card">
       <div ref={mountRef} className="canvas-container" />
 
       {/* Empty State Overlay */}
-      {!regions && (
+      {!hasAnyMesh && (
         <div className="empty-viewport-overlay">
           <div className="empty-icon-circle">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -366,24 +417,71 @@ export default function Viewer3D({
       )}
 
       {/* Floating Legend */}
-      {regions && (
+      {hasAnyMesh && (
         <div className="viewer-legend">
-          <div className="legend-item">
-            <span className="region-color-dot dot-wt" />
-            <span style={{ color: "var(--accent-cyan)", fontWeight: 600 }}>WT</span>
-            <span style={{ color: "var(--text-dim)" }}>Whole Tumour</span>
-          </div>
-          <div className="legend-item">
-            <span className="region-color-dot dot-tc" />
-            <span style={{ color: "var(--accent-amber)", fontWeight: 600 }}>TC</span>
-            <span style={{ color: "var(--text-dim)" }}>Tumour Core</span>
-          </div>
-          <div className="legend-item">
-            <span className="region-color-dot dot-et" />
-            <span style={{ color: "var(--accent-red)", fontWeight: 600 }}>ET</span>
-            <span style={{ color: "var(--text-dim)" }}>Enhancing Tumour</span>
-          </div>
-          {regions.brain && (
+          {viewMode === "agreement" ? (
+            <>
+              <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>
+                Agreement with Reference Mask
+              </div>
+              <div className="legend-item">
+                <span className="region-color-dot" style={{ background: "#10b981" }} />
+                <span style={{ color: "#10b981", fontWeight: 600 }}>True Positive</span>
+                <span style={{ color: "var(--text-dim)", fontSize: "0.7rem" }}>pred ∩ expert</span>
+              </div>
+              <div className="legend-item">
+                <span className="region-color-dot" style={{ background: "#8b5cf6" }} />
+                <span style={{ color: "#a78bfa", fontWeight: 600 }}>False Positive</span>
+                <span style={{ color: "var(--text-dim)", fontSize: "0.7rem" }}>pred - expert</span>
+              </div>
+              <div className="legend-item">
+                <span className="region-color-dot" style={{ background: "#f59e0b" }} />
+                <span style={{ color: "#fbbf24", fontWeight: 600 }}>False Negative</span>
+                <span style={{ color: "var(--text-dim)", fontSize: "0.7rem" }}>expert - pred</span>
+              </div>
+            </>
+          ) : viewMode === "expert" ? (
+            <>
+              <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "#10b981", marginBottom: "4px", textTransform: "uppercase" }}>
+                Expert Reference Mask
+              </div>
+              <div className="legend-item">
+                <span className="region-color-dot dot-wt" />
+                <span style={{ color: "var(--accent-cyan)", fontWeight: 600 }}>Expert WT</span>
+                <span style={{ color: "var(--text-dim)" }}>Whole Tumour</span>
+              </div>
+              <div className="legend-item">
+                <span className="region-color-dot dot-tc" />
+                <span style={{ color: "var(--accent-amber)", fontWeight: 600 }}>Expert TC</span>
+                <span style={{ color: "var(--text-dim)" }}>Tumour Core</span>
+              </div>
+              <div className="legend-item">
+                <span className="region-color-dot dot-et" />
+                <span style={{ color: "var(--accent-red)", fontWeight: 600 }}>Expert ET</span>
+                <span style={{ color: "var(--text-dim)" }}>Enhancing</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="legend-item">
+                <span className="region-color-dot dot-wt" />
+                <span style={{ color: "var(--accent-cyan)", fontWeight: 600 }}>WT</span>
+                <span style={{ color: "var(--text-dim)" }}>Whole Tumour</span>
+              </div>
+              <div className="legend-item">
+                <span className="region-color-dot dot-tc" />
+                <span style={{ color: "var(--accent-amber)", fontWeight: 600 }}>TC</span>
+                <span style={{ color: "var(--text-dim)" }}>Tumour Core</span>
+              </div>
+              <div className="legend-item">
+                <span className="region-color-dot dot-et" />
+                <span style={{ color: "var(--accent-red)", fontWeight: 600 }}>ET</span>
+                <span style={{ color: "var(--text-dim)" }}>Enhancing Tumour</span>
+              </div>
+            </>
+          )}
+
+          {regions?.brain && (
             <div className="legend-item" style={{ borderTop: "1px solid rgba(255, 255, 255, 0.08)", paddingTop: "4px", marginTop: "4px" }}>
               <span className="region-color-dot dot-brain" />
               <span style={{ color: "#cbd5e1", fontWeight: 600 }}>Brain</span>
@@ -394,7 +492,7 @@ export default function Viewer3D({
       )}
 
       {/* 3D Crosshair Position HUD */}
-      {regions && worldCrosshair && (
+      {hasAnyMesh && worldCrosshair && (
         <div className="viewer-crosshair-hud">
           <span className="crosshair-hud-dot" />
           <span className="crosshair-hud-label">3D Crosshair:</span>
@@ -405,7 +503,7 @@ export default function Viewer3D({
       )}
 
       {/* Viewer Bottom Controls */}
-      {regions && (
+      {hasAnyMesh && (
         <div className="viewer-bottom-bar">
           <button onClick={() => resetCamera()} className="btn-reset-view">
             Reset View

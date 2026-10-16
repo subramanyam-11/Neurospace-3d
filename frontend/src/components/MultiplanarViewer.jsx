@@ -16,6 +16,9 @@ export default function MultiplanarViewer({
   worldCoord = [0, 0, 0],
   visibleRegions = { WT: true, TC: true, ET: true },
   opacities = { WT: 0.35, TC: 0.65, ET: 0.85 },
+  viewMode = "predicted", // "predicted", "expert", "agreement"
+  showDisagreement = false,
+  disagreementOpacity = 0.70,
   onCrosshairChange,
   onCenterTumour,
 }) {
@@ -55,6 +58,9 @@ export default function MultiplanarViewer({
       wtOpacity: opacities.WT,
       tcOpacity: opacities.TC,
       etOpacity: opacities.ET,
+      showDisagreement,
+      disagreementOpacity,
+      renderMode: viewMode,
     })
       .then((data) => {
         if (!isCancelled) setAxialData(data);
@@ -67,7 +73,7 @@ export default function MultiplanarViewer({
     return () => {
       isCancelled = true;
     };
-  }, [jobId, k, modality, visibleRegions, opacities]);
+  }, [jobId, k, modality, visibleRegions, opacities, viewMode, showDisagreement, disagreementOpacity]);
 
   // Fetch Coronal Slice
   useEffect(() => {
@@ -86,6 +92,9 @@ export default function MultiplanarViewer({
       wtOpacity: opacities.WT,
       tcOpacity: opacities.TC,
       etOpacity: opacities.ET,
+      showDisagreement,
+      disagreementOpacity,
+      renderMode: viewMode,
     })
       .then((data) => {
         if (!isCancelled) setCoronalData(data);
@@ -98,7 +107,7 @@ export default function MultiplanarViewer({
     return () => {
       isCancelled = true;
     };
-  }, [jobId, j, modality, visibleRegions, opacities]);
+  }, [jobId, j, modality, visibleRegions, opacities, viewMode, showDisagreement, disagreementOpacity]);
 
   // Fetch Sagittal Slice
   useEffect(() => {
@@ -117,6 +126,9 @@ export default function MultiplanarViewer({
       wtOpacity: opacities.WT,
       tcOpacity: opacities.TC,
       etOpacity: opacities.ET,
+      showDisagreement,
+      disagreementOpacity,
+      renderMode: viewMode,
     })
       .then((data) => {
         if (!isCancelled) setSagittalData(data);
@@ -129,33 +141,25 @@ export default function MultiplanarViewer({
     return () => {
       isCancelled = true;
     };
-  }, [jobId, i, modality, visibleRegions, opacities]);
+  }, [jobId, i, modality, visibleRegions, opacities, viewMode, showDisagreement, disagreementOpacity]);
 
-  // Crosshair pixel calculations for each 2D viewport:
-  // Axial: col = i, row = j
+  // Crosshair pixel calculations
   const axialPixel = { col: i, row: j };
-
-  // Coronal: col = i, row = (dimZ - 1) - k
   const coronalPixel = { col: i, row: (dimZ - 1) - k };
-
-  // Sagittal: col = j, row = (dimZ - 1) - k
   const sagittalPixel = { col: j, row: (dimZ - 1) - k };
 
-  // Handle click on Axial slice (u=col -> i, v=row -> j)
   const handleAxialClick = (col, row) => {
     const nextI = Math.max(0, Math.min(dimX - 1, col));
     const nextJ = Math.max(0, Math.min(dimY - 1, row));
     onCrosshairChange([nextI, nextJ, k]);
   };
 
-  // Handle click on Coronal slice (u=col -> i, v=row -> k)
   const handleCoronalClick = (col, row) => {
     const nextI = Math.max(0, Math.min(dimX - 1, col));
     const nextK = Math.max(0, Math.min(dimZ - 1, (dimZ - 1) - row));
     onCrosshairChange([nextI, j, nextK]);
   };
 
-  // Handle click on Sagittal slice (u=col -> j, v=row -> k)
   const handleSagittalClick = (col, row) => {
     const nextJ = Math.max(0, Math.min(dimY - 1, col));
     const nextK = Math.max(0, Math.min(dimZ - 1, (dimZ - 1) - row));
