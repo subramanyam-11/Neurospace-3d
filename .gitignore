@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+frontend/dist/
+.DS_Store
+
+# Local/runtime data
+evaluation/data/
+evaluation/results/
+test_data/output_test/
+
+# Temporary uploads
+uploads/
+tmp/

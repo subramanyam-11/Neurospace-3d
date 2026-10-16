@@ -1,0 +1,531 @@
+{
+  "num_cases_evaluated": 11,
+  "mean_inference_seconds": 6.91,
+  "cases": [
+    {
+      "case_id": "BraTS2021_00002",
+      "inference_seconds": 6.15,
+      "volume_shape": [
+        240,
+        240,
+        155
+      ],
+      "metrics": {
+        "WT": {
+          "dice": 0.6988,
+          "sensitivity": 0.5426,
+          "specificity": 0.9998,
+          "pred_volume_cm3": 105.353,
+          "gt_volume_cm3": 190.594,
+          "abs_diff_cm3": 85.241,
+          "relative_volume_error_pct": 44.72,
+          "pred_voxel_count": 105353,
+          "gt_voxel_count": 190594
+        },
+        "TC": {
+          "dice": 0.825,
+          "sensitivity": 0.7062,
+          "specificity": 1.0,
+          "pred_volume_cm3": 24.851,
+          "gt_volume_cm3": 34.899,
+          "abs_diff_cm3": 10.048,
+          "relative_volume_error_pct": 28.79,
+          "pred_voxel_count": 24851,
+          "gt_voxel_count": 34899
+        },
+        "ET": {
+          "dice": 0.6512,
+          "sensitivity": 0.4952,
+          "specificity": 0.9999,
+          "pred_volume_cm3": 12.318,
+          "gt_volume_cm3": 23.651,
+          "abs_diff_cm3": 11.333,
+          "relative_volume_error_pct": 47.92,
+          "pred_voxel_count": 12318,
+          "gt_voxel_count": 23651
+        }
+      }
+    },
+    {
+      "case_id": "BraTS2021_00003",
+      "inference_seconds": 6.23,
+      "volume_shape": [
+        240,
+        240,
+        155
+      ],
+      "metrics": {
+        "WT": {
+          "dice": 0.9698,
+          "sensitivity": 0.9585,
+          "specificity": 0.9998,
+          "pred_volume_cm3": 96.921,
+          "gt_volume_cm3": 99.239,
+          "abs_diff_cm3": 2.318,
+          "relative_volume_error_pct": 2.34,
+          "pred_voxel_count": 96921,
+          "gt_voxel_count": 99239
+        },
+        "TC": {
+          "dice": 0.9749,
+          "sensitivity": 0.9701,
+          "specificity": 0.9999,
+          "pred_volume_cm3": 41.058,
+          "gt_volume_cm3": 41.466,
+          "abs_diff_cm3": 0.408,
+          "relative_volume_error_pct": 0.98,
+          "pred_voxel_count": 41058,
+          "gt_voxel_count": 41466
+        },
+        "ET": {
+          "dice": 0.9251,
+          "sensitivity": 0.8797,
+          "specificity": 0.9999,
+          "pred_volume_cm3": 21.869,
+          "gt_volume_cm3": 24.252,
+          "abs_diff_cm3": 2.383,
+          "relative_volume_error_pct": 9.83,
+          "pred_voxel_count": 21869,
+          "gt_voxel_count": 24252
+        }
+      }
+    },
+    {
+      "case_id": "BraTS2021_00005",
+      "inference_seconds": 6.27,
+      "volume_shape": [
+        240,
+        240,
+        155
+      ],
+      "metrics": {
+        "WT": {
+          "dice": 0.9593,
+          "sensitivity": 0.9563,
+          "specificity": 0.9995,
+          "pred_volume_cm3": 124.018,
+          "gt_volume_cm3": 124.783,
+          "abs_diff_cm3": 0.765,
+          "relative_volume_error_pct": 0.61,
+          "pred_voxel_count": 124018,
+          "gt_voxel_count": 124783
+        },
+        "TC": {
+          "dice": 0.936,
+          "sensitivity": 0.9678,
+          "specificity": 0.9995,
+          "pred_volume_cm3": 51.302,
+          "gt_volume_cm3": 48.041,
+          "abs_diff_cm3": 3.261,
+          "relative_volume_error_pct": 6.79,
+          "pred_voxel_count": 51302,
+          "gt_voxel_count": 48041
+        },
+        "ET": {
+          "dice": 0.8729,
+          "sensitivity": 0.8391,
+          "specificity": 0.9998,
+          "pred_volume_cm3": 22.008,
+          "gt_volume_cm3": 23.854,
+          "abs_diff_cm3": 1.846,
+          "relative_volume_error_pct": 7.74,
+          "pred_voxel_count": 22008,
+          "gt_voxel_count": 23854
+        }
+      }
+    },
+    {
+      "case_id": "BraTS2021_00006",
+      "inference_seconds": 6.43,
+      "volume_shape": [
+        240,
+        240,
+        155
+      ],
+      "metrics": {
+        "WT": {
+          "dice": 0.9739,
+          "sensitivity": 0.9679,
+          "specificity": 0.9997,
+          "pred_volume_cm3": 136.215,
+          "gt_volume_cm3": 137.911,
+          "abs_diff_cm3": 1.696,
+          "relative_volume_error_pct": 1.23,
+          "pred_voxel_count": 136215,
+          "gt_voxel_count": 137911
+        },
+        "TC": {
+          "dice": 0.9747,
+          "sensitivity": 0.9873,
+          "specificity": 0.9998,
+          "pred_volume_cm3": 53.305,
+          "gt_volume_cm3": 51.954,
+          "abs_diff_cm3": 1.351,
+          "relative_volume_error_pct": 2.6,
+          "pred_voxel_count": 53305,
+          "gt_voxel_count": 51954
+        },
+        "ET": {
+          "dice": 0.913,
+          "sensitivity": 0.8956,
+          "specificity": 0.9998,
+          "pred_volume_cm3": 25.437,
+          "gt_volume_cm3": 26.448,
+          "abs_diff_cm3": 1.011,
+          "relative_volume_error_pct": 3.82,
+          "pred_voxel_count": 25437,
+          "gt_voxel_count": 26448
+        }
+      }
+    },
+    {
+      "case_id": "BraTS2021_00008",
+      "inference_seconds": 6.42,
+      "volume_shape": [
+        240,
+        240,
+        155
+      ],
+      "metrics": {
+        "WT": {
+          "dice": 0.7844,
+          "sensitivity": 0.993,
+          "specificity": 0.9989,
+          "pred_volume_cm3": 28.277,
+          "gt_volume_cm3": 18.462,
+          "abs_diff_cm3": 9.815,
+          "relative_volume_error_pct": 53.16,
+          "pred_voxel_count": 28277,
+          "gt_voxel_count": 18462
+        },
+        "TC": {
+          "dice": 0.4184,
+          "sensitivity": 0.9021,
+          "specificity": 0.9999,
+          "pred_volume_cm3": 1.083,
+          "gt_volume_cm3": 0.327,
+          "abs_diff_cm3": 0.756,
+          "relative_volume_error_pct": 231.19,
+          "pred_voxel_count": 1083,
+          "gt_voxel_count": 327
+        },
+        "ET": {
+          "dice": 0.5806,
+          "sensitivity": 0.8457,
+          "specificity": 1.0,
+          "pred_volume_cm3": 0.595,
+          "gt_volume_cm3": 0.311,
+          "abs_diff_cm3": 0.284,
+          "relative_volume_error_pct": 91.32,
+          "pred_voxel_count": 595,
+          "gt_voxel_count": 311
+        }
+      }
+    },
+    {
+      "case_id": "BraTS2021_00009",
+      "inference_seconds": 6.4,
+      "volume_shape": [
+        240,
+        240,
+        155
+      ],
+      "metrics": {
+        "WT": {
+          "dice": 0.662,
+          "sensitivity": 0.511,
+          "specificity": 0.9999,
+          "pred_volume_cm3": 14.93,
+          "gt_volume_cm3": 27.453,
+          "abs_diff_cm3": 12.523,
+          "relative_volume_error_pct": 45.62,
+          "pred_voxel_count": 14930,
+          "gt_voxel_count": 27453
+        },
+        "TC": {
+          "dice": 0.947,
+          "sensitivity": 0.9442,
+          "specificity": 1.0,
+          "pred_volume_cm3": 1.854,
+          "gt_volume_cm3": 1.865,
+          "abs_diff_cm3": 0.011,
+          "relative_volume_error_pct": 0.59,
+          "pred_voxel_count": 1854,
+          "gt_voxel_count": 1865
+        },
+        "ET": {
+          "dice": 0.8591,
+          "sensitivity": 0.7804,
+          "specificity": 1.0,
+          "pred_volume_cm3": 1.209,
+          "gt_volume_cm3": 1.48,
+          "abs_diff_cm3": 0.271,
+          "relative_volume_error_pct": 18.31,
+          "pred_voxel_count": 1209,
+          "gt_voxel_count": 1480
+        }
+      }
+    },
+    {
+      "case_id": "BraTS2021_00011",
+      "inference_seconds": 6.47,
+      "volume_shape": [
+        240,
+        240,
+        155
+      ],
+      "metrics": {
+        "WT": {
+          "dice": 0.9445,
+          "sensitivity": 0.9376,
+          "specificity": 0.9996,
+          "pred_volume_cm3": 69.163,
+          "gt_volume_cm3": 70.184,
+          "abs_diff_cm3": 1.021,
+          "relative_volume_error_pct": 1.45,
+          "pred_voxel_count": 69163,
+          "gt_voxel_count": 70184
+        },
+        "TC": {
+          "dice": 0.9263,
+          "sensitivity": 0.9464,
+          "specificity": 0.9999,
+          "pred_volume_cm3": 9.777,
+          "gt_volume_cm3": 9.369,
+          "abs_diff_cm3": 0.408,
+          "relative_volume_error_pct": 4.35,
+          "pred_voxel_count": 9777,
+          "gt_voxel_count": 9369
+        },
+        "ET": {
+          "dice": 0.9028,
+          "sensitivity": 0.8855,
+          "specificity": 0.9999,
+          "pred_volume_cm3": 8.994,
+          "gt_volume_cm3": 9.353,
+          "abs_diff_cm3": 0.359,
+          "relative_volume_error_pct": 3.84,
+          "pred_voxel_count": 8994,
+          "gt_voxel_count": 9353
+        }
+      }
+    },
+    {
+      "case_id": "BraTS2021_00012",
+      "inference_seconds": 6.93,
+      "volume_shape": [
+        240,
+        240,
+        155
+      ],
+      "metrics": {
+        "WT": {
+          "dice": 0.9673,
+          "sensitivity": 0.9949,
+          "specificity": 0.9981,
+          "pred_volume_cm3": 278.902,
+          "gt_volume_cm3": 263.809,
+          "abs_diff_cm3": 15.093,
+          "relative_volume_error_pct": 5.72,
+          "pred_voxel_count": 278902,
+          "gt_voxel_count": 263809
+        },
+        "TC": {
+          "dice": 0.8757,
+          "sensitivity": 0.8779,
+          "specificity": 0.9975,
+          "pred_volume_cm3": 172.839,
+          "gt_volume_cm3": 171.947,
+          "abs_diff_cm3": 0.892,
+          "relative_volume_error_pct": 0.52,
+          "pred_voxel_count": 172839,
+          "gt_voxel_count": 171947
+        },
+        "ET": {
+          "dice": 0.0244,
+          "sensitivity": 0.1429,
+          "specificity": 0.9997,
+          "pred_volume_cm3": 2.402,
+          "gt_volume_cm3": 0.224,
+          "abs_diff_cm3": 2.178,
+          "relative_volume_error_pct": 972.32,
+          "pred_voxel_count": 2402,
+          "gt_voxel_count": 224
+        }
+      }
+    },
+    {
+      "case_id": "BraTS2021_00014",
+      "inference_seconds": 7.56,
+      "volume_shape": [
+        240,
+        240,
+        155
+      ],
+      "metrics": {
+        "WT": {
+          "dice": 0.8147,
+          "sensitivity": 0.7514,
+          "specificity": 0.9996,
+          "pred_volume_cm3": 32.395,
+          "gt_volume_cm3": 38.358,
+          "abs_diff_cm3": 5.963,
+          "relative_volume_error_pct": 15.55,
+          "pred_voxel_count": 32395,
+          "gt_voxel_count": 38358
+        },
+        "TC": {
+          "dice": 0.5135,
+          "sensitivity": 1.0,
+          "specificity": 0.9995,
+          "pred_volume_cm3": 7.407,
+          "gt_volume_cm3": 2.559,
+          "abs_diff_cm3": 4.848,
+          "relative_volume_error_pct": 189.45,
+          "pred_voxel_count": 7407,
+          "gt_voxel_count": 2559
+        },
+        "ET": {
+          "dice": 0.8023,
+          "sensitivity": 0.7759,
+          "specificity": 1.0,
+          "pred_volume_cm3": 2.389,
+          "gt_volume_cm3": 2.557,
+          "abs_diff_cm3": 0.168,
+          "relative_volume_error_pct": 6.57,
+          "pred_voxel_count": 2389,
+          "gt_voxel_count": 2557
+        }
+      }
+    },
+    {
+      "case_id": "BraTS2021_00016",
+      "inference_seconds": 8.04,
+      "volume_shape": [
+        240,
+        240,
+        155
+      ],
+      "metrics": {
+        "WT": {
+          "dice": 0.9102,
+          "sensitivity": 0.8658,
+          "specificity": 0.9997,
+          "pred_volume_cm3": 67.275,
+          "gt_volume_cm3": 74.546,
+          "abs_diff_cm3": 7.271,
+          "relative_volume_error_pct": 9.75,
+          "pred_voxel_count": 67275,
+          "gt_voxel_count": 74546
+        },
+        "TC": {
+          "dice": 0.9354,
+          "sensitivity": 0.9896,
+          "specificity": 0.9997,
+          "pred_volume_cm3": 26.0,
+          "gt_volume_cm3": 23.3,
+          "abs_diff_cm3": 2.7,
+          "relative_volume_error_pct": 11.59,
+          "pred_voxel_count": 26000,
+          "gt_voxel_count": 23300
+        },
+        "ET": {
+          "dice": 0.8464,
+          "sensitivity": 0.954,
+          "specificity": 0.9996,
+          "pred_volume_cm3": 15.92,
+          "gt_volume_cm3": 12.694,
+          "abs_diff_cm3": 3.226,
+          "relative_volume_error_pct": 25.41,
+          "pred_voxel_count": 15920,
+          "gt_voxel_count": 12694
+        }
+      }
+    },
+    {
+      "case_id": "BraTS2021_00017",
+      "inference_seconds": 9.11,
+      "volume_shape": [
+        240,
+        240,
+        155
+      ],
+      "metrics": {
+        "WT": {
+          "dice": 0.9483,
+          "sensitivity": 0.9379,
+          "specificity": 0.9995,
+          "pred_volume_cm3": 97.197,
+          "gt_volume_cm3": 99.385,
+          "abs_diff_cm3": 2.188,
+          "relative_volume_error_pct": 2.2,
+          "pred_voxel_count": 97197,
+          "gt_voxel_count": 99385
+        },
+        "TC": {
+          "dice": 0.8797,
+          "sensitivity": 0.7913,
+          "specificity": 1.0,
+          "pred_volume_cm3": 1.443,
+          "gt_volume_cm3": 1.806,
+          "abs_diff_cm3": 0.363,
+          "relative_volume_error_pct": 20.1,
+          "pred_voxel_count": 1443,
+          "gt_voxel_count": 1806
+        },
+        "ET": {
+          "dice": 0.7615,
+          "sensitivity": 0.6352,
+          "specificity": 1.0,
+          "pred_volume_cm3": 1.154,
+          "gt_volume_cm3": 1.727,
+          "abs_diff_cm3": 0.573,
+          "relative_volume_error_pct": 33.18,
+          "pred_voxel_count": 1154,
+          "gt_voxel_count": 1727
+        }
+      }
+    }
+  ],
+  "aggregates": {
+    "WT": {
+      "dice_mean": 0.8757,
+      "dice_std": 0.1104,
+      "dice_median": 0.9445,
+      "dice_min": 0.662,
+      "dice_max": 0.9739,
+      "sensitivity_mean": 0.8561,
+      "sensitivity_std": 0.1686,
+      "specificity_mean": 0.9995,
+      "mean_abs_volume_diff_cm3": 13.08,
+      "mean_relative_volume_error_pct": 16.58,
+      "volume_pearson_r": 0.9342
+    },
+    "TC": {
+      "dice_mean": 0.837,
+      "dice_std": 0.1811,
+      "dice_median": 0.9263,
+      "dice_min": 0.4184,
+      "dice_max": 0.9749,
+      "sensitivity_mean": 0.9166,
+      "sensitivity_std": 0.0885,
+      "specificity_mean": 0.9996,
+      "mean_abs_volume_diff_cm3": 2.28,
+      "mean_relative_volume_error_pct": 45.18,
+      "volume_pearson_r": 0.997
+    },
+    "ET": {
+      "dice_mean": 0.7399,
+      "dice_std": 0.2493,
+      "dice_median": 0.8464,
+      "dice_min": 0.0244,
+      "dice_max": 0.9251,
+      "sensitivity_mean": 0.739,
+      "sensitivity_std": 0.226,
+      "specificity_mean": 0.9999,
+      "mean_abs_volume_diff_cm3": 2.15,
+      "mean_relative_volume_error_pct": 110.93,
+      "volume_pearson_r": 0.9435
+    }
+  }
+}

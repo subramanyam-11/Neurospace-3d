@@ -1,0 +1,395 @@
+import React, { useEffect, useRef } from "react";
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+
+const REGION_CONFIG = {
+  WT: {
+    color: 0x38bdf8, // Ice Blue / Cyan
+    name: "Whole Tumour",
+    depthWrite: false,
+  },
+  TC: {
+    color: 0xf59e0b, // Amber / Orange
+    name: "Tumour Core",
+    depthWrite: false,
+  },
+  ET: {
+    color: 0xef4444, // Crimson / Bright Red
+    name: "Enhancing Tumour",
+    depthWrite: true,
+  },
+};
+
+function createCrosshairMarker() {
+  const markerGroup = new THREE.Group();
+  markerGroup.name = "worldCrosshairMarker";
+
+  // Central bright target sphere
+  const sphereGeo = new THREE.SphereGeometry(2.5, 16, 16);
+  const sphereMat = new THREE.MeshBasicMaterial({
+    color: 0x38bdf8,
+    depthTest: false,
+    transparent: true,
+    opacity: 0.95,
+  });
+  const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+  sphere.renderOrder = 9999;
+  markerGroup.add(sphere);
+
+  // Outer target ring
+  const ringGeo = new THREE.RingGeometry(3.8, 4.6, 24);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    side: THREE.DoubleSide,
+    depthTest: false,
+    transparent: true,
+    opacity: 0.85,
+  });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.renderOrder = 9999;
+  markerGroup.add(ring);
+
+  // 3 orthogonal axis crosshair lines (25mm in each direction)
+  const lineMatX = new THREE.LineBasicMaterial({ color: 0xef4444, depthTest: false, transparent: true, opacity: 0.9 });
+  const lineMatY = new THREE.LineBasicMaterial({ color: 0x10b981, depthTest: false, transparent: true, opacity: 0.9 });
+  const lineMatZ = new THREE.LineBasicMaterial({ color: 0x38bdf8, depthTest: false, transparent: true, opacity: 0.9 });
+
+  const geoX = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(-25, 0, 0),
+    new THREE.Vector3(25, 0, 0),
+  ]);
+  const lineX = new THREE.Line(geoX, lineMatX);
+  lineX.renderOrder = 9999;
+  markerGroup.add(lineX);
+
+  const geoY = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, -25, 0),
+    new THREE.Vector3(0, 25, 0),
+  ]);
+  const lineY = new THREE.Line(geoY, lineMatY);
+  lineY.renderOrder = 9999;
+  markerGroup.add(lineY);
+
+  const geoZ = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0, -25),
+    new THREE.Vector3(0, 0, 25),
+  ]);
+  const lineZ = new THREE.Line(geoZ, lineMatZ);
+  lineZ.renderOrder = 9999;
+  markerGroup.add(lineZ);
+
+  markerGroup.visible = false;
+  return markerGroup;
+}
+
+export default function Viewer3D({
+  regions = null,
+  visibleRegions = { WT: true, TC: true, ET: true },
+  opacities = { WT: 0.35, TC: 0.65, ET: 0.85 },
+  wireframe = false,
+  onResetViewRef = null,
+  worldCrosshair = null,
+}) {
+  const mountRef = useRef(null);
+  const sceneRef = useRef(null);
+  const cameraRef = useRef(null);
+  const controlsRef = useRef(null);
+  const groupRef = useRef(null);
+  const crosshairGroupRef = useRef(null);
+  const meshesRef = useRef({});
+  const boundingInfoRef = useRef({ center: new THREE.Vector3(0, 0, 0), radius: 100 });
+
+  // 1. Initialize Three.js scene, camera, renderer, and lights
+  useEffect(() => {
+    const container = mountRef.current;
+    if (!container) return;
+
+    const width = container.clientWidth || 600;
+    const height = container.clientHeight || 500;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x06080e);
+    sceneRef.current = scene;
+
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 2000);
+    camera.position.set(0, 0, 250);
+    cameraRef.current = camera;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.rotateSpeed = 0.8;
+    controls.zoomSpeed = 1.0;
+    controls.panSpeed = 0.8;
+    controlsRef.current = controls;
+
+    // Subtle grid helper for spatial context
+    const gridHelper = new THREE.GridHelper(220, 22, 0x1e293b, 0x0f172a);
+    gridHelper.position.y = -60;
+    scene.add(gridHelper);
+
+    // Orientation axes helper (R/G/B = X/Y/Z)
+    const axesHelper = new THREE.AxesHelper(30);
+    axesHelper.position.set(-80, -50, -80);
+    scene.add(axesHelper);
+
+    // Lighting setup
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+    scene.add(ambientLight);
+
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
+    dirLight1.position.set(120, 200, 180);
+    scene.add(dirLight1);
+
+    const dirLight2 = new THREE.DirectionalLight(0x94a3b8, 0.7);
+    dirLight2.position.set(-150, -100, -120);
+    scene.add(dirLight2);
+
+    const dirLight3 = new THREE.DirectionalLight(0x38bdf8, 0.4);
+    dirLight3.position.set(0, -100, 100);
+    scene.add(dirLight3);
+
+    // Root group for all tumour subregion meshes
+    const group = new THREE.Group();
+    scene.add(group);
+    groupRef.current = group;
+
+    // Animation Loop
+    let animationFrameId;
+    const animate = () => {
+      animationFrameId = requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    // Resize observer
+    const handleResize = () => {
+      if (!container) return;
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    };
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(container);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      resizeObserver.disconnect();
+      if (renderer.domElement && renderer.domElement.parentNode) {
+        renderer.domElement.parentNode.removeChild(renderer.domElement);
+      }
+      renderer.dispose();
+    };
+  }, []);
+
+  // 2. Build or rebuild meshes when `regions` data updates
+  useEffect(() => {
+    const group = groupRef.current;
+    if (!group) return;
+
+    // Clear existing meshes
+    while (group.children.length > 0) {
+      const child = group.children[0];
+      group.remove(child);
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) child.material.dispose();
+    }
+    meshesRef.current = {};
+
+    if (!regions) return;
+
+    // Determine collective bounding box in physical mm
+    let minCoord = new THREE.Vector3(Infinity, Infinity, Infinity);
+    let maxCoord = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+    let hasGeometry = false;
+
+    Object.entries(regions).forEach(([key, regionData]) => {
+      if (!regionData?.vertices?.length || !regionData?.faces?.length) return;
+
+      regionData.vertices.forEach(([x, y, z]) => {
+        minCoord.x = Math.min(minCoord.x, x);
+        minCoord.y = Math.min(minCoord.y, y);
+        minCoord.z = Math.min(minCoord.z, z);
+        maxCoord.x = Math.max(maxCoord.x, x);
+        maxCoord.y = Math.max(maxCoord.y, y);
+        maxCoord.z = Math.max(maxCoord.z, z);
+      });
+      hasGeometry = true;
+    });
+
+    if (!hasGeometry) return;
+
+    const center = new THREE.Vector3().addVectors(minCoord, maxCoord).multiplyScalar(0.5);
+    const size = new THREE.Vector3().subVectors(maxCoord, minCoord);
+    const maxDim = Math.max(size.x, size.y, size.z, 50);
+
+    // Center the group in the scene coordinates
+    group.position.set(-center.x, -center.y, -center.z);
+
+    boundingInfoRef.current = { center, maxDim };
+
+    // Create a mesh for each region
+    ["WT", "TC", "ET"].forEach((regionKey) => {
+      const regionData = regions[regionKey];
+      if (!regionData?.vertices?.length || !regionData?.faces?.length) return;
+
+      const geometry = new THREE.BufferGeometry();
+      const positions = new Float32Array(regionData.vertices.flat());
+      geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      geometry.setIndex(regionData.faces.flat());
+      geometry.computeVertexNormals();
+
+      const cfg = REGION_CONFIG[regionKey] || { color: 0xffffff, depthWrite: true };
+      const material = new THREE.MeshStandardMaterial({
+        color: cfg.color,
+        roughness: 0.35,
+        metalness: 0.15,
+        transparent: true,
+        opacity: opacities[regionKey] ?? 0.7,
+        wireframe: wireframe,
+        side: THREE.DoubleSide,
+        depthWrite: cfg.depthWrite,
+      });
+
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = regionKey;
+      mesh.visible = visibleRegions[regionKey] !== false;
+      group.add(mesh);
+      meshesRef.current[regionKey] = mesh;
+    });
+
+    // Create and attach 3D synchronized crosshair marker
+    const marker = createCrosshairMarker();
+    group.add(marker);
+    crosshairGroupRef.current = marker;
+    if (Array.isArray(worldCrosshair) && worldCrosshair.length === 3) {
+      marker.position.set(worldCrosshair[0], worldCrosshair[1], worldCrosshair[2]);
+      marker.visible = true;
+    }
+
+    // Frame the camera nicely
+    resetCamera(maxDim);
+  }, [regions]);
+
+  // 3. Update 3D Crosshair Marker position when worldCrosshair changes
+  useEffect(() => {
+    const marker = crosshairGroupRef.current;
+    if (!marker) return;
+
+    if (Array.isArray(worldCrosshair) && worldCrosshair.length === 3) {
+      marker.position.set(worldCrosshair[0], worldCrosshair[1], worldCrosshair[2]);
+      marker.visible = true;
+    } else {
+      marker.visible = false;
+    }
+  }, [worldCrosshair]);
+
+  // 4. Update visibility, opacity & wireframe without rebuilding geometry
+  useEffect(() => {
+    ["WT", "TC", "ET"].forEach((regionKey) => {
+      const mesh = meshesRef.current[regionKey];
+      if (mesh && mesh.material) {
+        mesh.visible = visibleRegions[regionKey] !== false;
+        mesh.material.opacity = opacities[regionKey] ?? 0.7;
+        mesh.material.wireframe = wireframe;
+        mesh.material.needsUpdate = true;
+      }
+    });
+  }, [visibleRegions, opacities, wireframe]);
+
+  // Camera reset helper
+  const resetCamera = (dim) => {
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+    if (!camera || !controls) return;
+
+    const maxDim = dim || boundingInfoRef.current.maxDim || 100;
+    const distance = maxDim * 2.2;
+    camera.position.set(0, distance * 0.4, distance);
+    camera.lookAt(0, 0, 0);
+    controls.target.set(0, 0, 0);
+    controls.update();
+  };
+
+  if (onResetViewRef) {
+    onResetViewRef.current = () => resetCamera();
+  }
+
+  return (
+    <div className="viewport-card">
+      <div ref={mountRef} className="canvas-container" />
+
+      {/* Empty State Overlay */}
+      {!regions && (
+        <div className="empty-viewport-overlay">
+          <div className="empty-icon-circle">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+            </svg>
+          </div>
+          <h3 className="empty-title">Interactive 3D Brain Tumour Viewer</h3>
+          <p className="empty-desc">
+            Upload the four MRI sequences (T1, T1Gd, T2, FLAIR) to generate model-predicted 3D tumour surfaces.
+          </p>
+        </div>
+      )}
+
+      {/* Floating Legend */}
+      {regions && (
+        <div className="viewer-legend">
+          <div className="legend-item">
+            <span className="region-color-dot dot-wt" />
+            <span style={{ color: "var(--accent-cyan)", fontWeight: 600 }}>WT</span>
+            <span style={{ color: "var(--text-dim)" }}>Whole Tumour</span>
+          </div>
+          <div className="legend-item">
+            <span className="region-color-dot dot-tc" />
+            <span style={{ color: "var(--accent-amber)", fontWeight: 600 }}>TC</span>
+            <span style={{ color: "var(--text-dim)" }}>Tumour Core</span>
+          </div>
+          <div className="legend-item">
+            <span className="region-color-dot dot-et" />
+            <span style={{ color: "var(--accent-red)", fontWeight: 600 }}>ET</span>
+            <span style={{ color: "var(--text-dim)" }}>Enhancing Tumour</span>
+          </div>
+        </div>
+      )}
+
+      {/* 3D Crosshair Position HUD */}
+      {regions && worldCrosshair && (
+        <div className="viewer-crosshair-hud">
+          <span className="crosshair-hud-dot" />
+          <span className="crosshair-hud-label">3D Crosshair:</span>
+          <span>
+            [{worldCrosshair[0] >= 0 ? "+" : ""}{worldCrosshair[0]}, {worldCrosshair[1] >= 0 ? "+" : ""}{worldCrosshair[1]}, {worldCrosshair[2] >= 0 ? "+" : ""}{worldCrosshair[2]} mm]
+          </span>
+        </div>
+      )}
+
+      {/* Viewer Bottom Controls */}
+      {regions && (
+        <div className="viewer-bottom-bar">
+          <button onClick={() => resetCamera()} className="btn-reset-view">
+            Reset View
+          </button>
+          <span>|</span>
+          <span>Rotate: Left Click</span>
+          <span>•</span>
+          <span>Pan: Right Click</span>
+          <span>•</span>
+          <span>Zoom: Scroll</span>
+        </div>
+      )}
+    </div>
+  );
+}
