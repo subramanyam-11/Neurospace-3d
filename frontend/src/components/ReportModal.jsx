@@ -5,12 +5,10 @@ export default function ReportModal({
   onClose,
   predictionResult,
   crosshair,
-  simulationData = null,
 }) {
   if (!isOpen || !predictionResult) return null;
 
   const { job_id, volume, metrics, regions, timing, provenance, reliability, tta, expert_agreement, has_expert } = predictionResult;
-  const simulation = simulationData || predictionResult?.simulation;
   const timestamp = provenance?.timestamp_utc || new Date().toUTCString();
 
   const handlePrint = () => {
@@ -290,54 +288,6 @@ export default function ReportModal({
                   <span className="stat-val" style={{ color: "#10b981" }}>{(timing.total_time_ms / 1000).toFixed(2)} s</span>
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Section: Hypothetical Spatial Simulation (Optional Scenario) */}
-          {simulation && (
-            <div className="report-section" style={{ borderLeft: "4px solid #c084fc", paddingLeft: "12px", background: "rgba(168, 85, 247, 0.04)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h3 className="report-section-heading" style={{ color: "#c084fc", margin: 0 }}>
-                  HYPOTHETICAL SPATIAL SIMULATION
-                </h3>
-                <span className="brand-badge" style={{ background: "rgba(168, 85, 247, 0.2)", color: "#c084fc", borderColor: "rgba(168, 85, 247, 0.4)" }}>
-                  +{simulation.expansion_pct}% Scenario
-                </span>
-              </div>
-              <div className="report-disclaimer-box" style={{ background: "rgba(168, 85, 247, 0.08)", borderColor: "rgba(168, 85, 247, 0.3)", marginTop: "8px" }}>
-                <strong>RESEARCH NOTICE — NOT A PREDICTION OF TUMOUR GROWTH OR TISSUE DAMAGE</strong>
-                <p style={{ marginTop: "4px" }}>
-                  This simulation represents a mathematical distance-transform expansion based on the current model-predicted region. It does NOT predict future tumour growth, biological invasion, tissue damage, prognosis, or clinical treatment outcome.
-                </p>
-              </div>
-              <table className="report-table" style={{ marginTop: "10px" }}>
-                <tbody>
-                  <tr>
-                    <td style={{ fontWeight: 600, width: "240px" }}>Original Predicted WT Volume</td>
-                    <td>{simulation.original_volume_cm3 ?? wtVol} cm³</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600 }}>Simulated Expansion Percentage</td>
-                    <td>+{simulation.expansion_pct}%</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600 }}>Simulated Estimated Volume</td>
-                    <td>{simulation.simulated_volume_cm3} cm³</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600 }}>Additional Simulated Volume</td>
-                    <td>+{simulation.added_volume_cm3} cm³</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600 }}>Expansion Radius (Anisotropic)</td>
-                    <td>{simulation.expansion_radius_mm} mm</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600 }}>Distance to Patient Brain Surface</td>
-                    <td>{simulation.distance_to_brain_surface_mm !== null ? `${simulation.distance_to_brain_surface_mm} mm` : "N/A"}</td>
-                  </tr>
-                </tbody>
-              </table>
             </div>
           )}
 

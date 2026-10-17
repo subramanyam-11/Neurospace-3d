@@ -3,10 +3,10 @@ import SliceView2D from "./SliceView2D";
 import { fetchSlice } from "../services/api";
 
 const MODALITIES = [
-  { key: "flair", label: "FLAIR (Lesion Hyperintensity)" },
-  { key: "t1gd", label: "T1Gd (Post-Contrast)" },
-  { key: "t1", label: "T1 (Anatomy)" },
-  { key: "t2", label: "T2 (Edema)" },
+  { key: "t1", label: "T1", desc: "Native anatomical baseline" },
+  { key: "t1gd", label: "T1Gd", desc: "Post-contrast active enhancement" },
+  { key: "t2", label: "T2", desc: "T2 hyperintense fluid & edema" },
+  { key: "flair", label: "FLAIR", desc: "Free-water suppressed oedema" },
 ];
 
 export default function MultiplanarViewer({
@@ -174,46 +174,50 @@ export default function MultiplanarViewer({
           <div>
             <h2 className="panel-title">Linked Orthogonal 2D MRI Views</h2>
             <p className="panel-desc">
-              Synchronized Axial, Coronal, and Sagittal crosshairs with model-predicted subregion overlays
+              Synchronized Axial, Coronal, and Sagittal planes with model-predicted subregion overlays
             </p>
           </div>
-          <button onClick={onCenterTumour} className="btn-demo" title="Jump crosshair to suspected tumour center">
+          <button onClick={onCenterTumour} className="btn-center-tumour" title="Jump crosshair to suspected tumour centroid">
             🎯 Center on Suspected Tumour
           </button>
         </div>
 
         <div className="multiplanar-controls-group">
-          {/* Modality Selector */}
-          <div className="modality-select-wrap">
-            <span className="modality-select-label">Sequence:</span>
-            <select
-              value={modality}
-              onChange={(e) => setModality(e.target.value)}
-              className="modality-dropdown"
-            >
-              {MODALITIES.map((m) => (
-                <option key={m.key} value={m.key}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
+          {/* Segmented Sequence Selector */}
+          <div className="sequence-segmented-bar">
+            <span className="sequence-selector-label">Sequence:</span>
+            <div className="segmented-control">
+              {MODALITIES.map((m) => {
+                const isSelected = modality === m.key;
+                return (
+                  <button
+                    key={m.key}
+                    type="button"
+                    onClick={() => setModality(m.key)}
+                    className={`segmented-btn ${isSelected ? "selected" : ""}`}
+                    title={m.desc}
+                  >
+                    {m.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Coordinate Readout Badge */}
-          <div className="crosshair-readout-pill">
-            <span className="crosshair-readout-label">World (mm):</span>
-            <span className="crosshair-val">
-              X: {worldCoord[0] >= 0 ? "+" : ""}{worldCoord[0]}
-            </span>
-            <span className="crosshair-val">
-              Y: {worldCoord[1] >= 0 ? "+" : ""}{worldCoord[1]}
-            </span>
-            <span className="crosshair-val">
-              Z: {worldCoord[2] >= 0 ? "+" : ""}{worldCoord[2]}
-            </span>
-            <span className="voxel-coord-text">
-              Voxel: [{i}, {j}, {k}]
-            </span>
+          {/* Coordinate Readout HUD */}
+          <div className="coordinate-hud-card">
+            <div className="hud-line">
+              <span className="hud-label">WORLD:</span>
+              <span className="hud-val">
+                X: {worldCoord[0] >= 0 ? "+" : ""}{worldCoord[0]} mm &nbsp;|&nbsp;
+                Y: {worldCoord[1] >= 0 ? "+" : ""}{worldCoord[1]} mm &nbsp;|&nbsp;
+                Z: {worldCoord[2] >= 0 ? "+" : ""}{worldCoord[2]} mm
+              </span>
+            </div>
+            <div className="hud-line">
+              <span className="hud-label">VOXEL:</span>
+              <span className="hud-voxel-val">[{i}, {j}, {k}]</span>
+            </div>
           </div>
         </div>
       </div>
