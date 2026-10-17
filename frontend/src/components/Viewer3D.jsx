@@ -52,6 +52,14 @@ const REGION_CONFIG = {
     roughness: 0.35,
     metalness: 0.15,
   },
+  simulated: {
+    color: 0xc084fc, // Translucent Lavender / Purple Outer Shell
+    name: "Hypothetical Spatial Simulation",
+    depthWrite: false,
+    renderOrder: 5,
+    roughness: 0.25,
+    metalness: 0.10,
+  },
   brain: {
     color: 0x94a3b8, // Slate cortical anatomical shell
     name: "Patient-specific MRI anatomy",
@@ -128,12 +136,18 @@ export default function Viewer3D({
   regions = null,
   expertMeshes = null,
   agreementMeshes = null,
+  simulatedMesh = null,
+  showSimulation = false,
+  simulationOpacity = 0.35,
+  cutaway = false,
   viewMode = "predicted", // "predicted", "expert", "agreement"
-  visibleRegions = { WT: true, TC: true, ET: true, brain: true, TP: true, FP: true, FN: true },
-  opacities = { WT: 0.35, TC: 0.65, ET: 0.85, brain: 0.18, TP: 0.85, FP: 0.65, FN: 0.55 },
+  visibleRegions = { WT: true, TC: true, ET: true, brain: true, TP: true, FP: true, FN: true, simulated: true },
+  opacities = { WT: 0.35, TC: 0.65, ET: 0.85, brain: 0.18, TP: 0.85, FP: 0.65, FN: 0.55, simulated: 0.35 },
   wireframe = false,
   onResetViewRef = null,
+  onFocusScenarioRef = null,
   worldCrosshair = null,
+  hudInfo = null,
 }) {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
@@ -143,6 +157,7 @@ export default function Viewer3D({
   const crosshairGroupRef = useRef(null);
   const meshesRef = useRef({});
   const boundingInfoRef = useRef({ center: new THREE.Vector3(0, 0, 0), radius: 100 });
+  const clipPlaneRef = useRef(new THREE.Plane(new THREE.Vector3(0, 0, 1), 10)); // Sagittal/axial section clip
 
   // 1. Initialize Three.js scene, camera, renderer, and lights
   useEffect(() => {
@@ -165,6 +180,7 @@ export default function Viewer3D({
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.1;
+    renderer.localClippingEnabled = true; // Enables cutaway / section view
     container.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -185,11 +201,11 @@ export default function Viewer3D({
     axesHelper.position.set(-80, -50, -80);
     scene.add(axesHelper);
 
-    // Lighting setup
+    // Lighting setup (scientific key + rim + ambient)
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
     scene.add(ambientLight);
 
-    const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.25);
     dirLight1.position.set(120, 200, 180);
     scene.add(dirLight1);
 
@@ -197,7 +213,7 @@ export default function Viewer3D({
     dirLight2.position.set(-150, -100, -120);
     scene.add(dirLight2);
 
-    const dirLight3 = new THREE.DirectionalLight(0x38bdf8, 0.4);
+    const dirLight3 = new THREE.DirectionalLight(0x38bdf8, 0.45);
     dirLight3.position.set(0, -100, 100);
     scene.add(dirLight3);
 
@@ -237,7 +253,7 @@ export default function Viewer3D({
     };
   }, []);
 
-  // 2. Build or rebuild meshes when active mesh source or viewMode updates
+  // 2. Build or rebuild meshes when active mesh source, viewMode, or simulation changes
   useEffect(() => {
     const group = groupRef.current;
     if (!group) return;
@@ -268,7 +284,12 @@ export default function Viewer3D({
         brain: regions?.brain,
       };
     } else {
-      activeMeshes = regions || {};
+      activeMeshes = { ...regions };
+    }
+
+    // Attach simulated expansion mesh if active (Feature: Phase 4)
+    if (showSimulation && simulatedMesh) {
+      activeMeshes.simulated = simulatedMesh;
     }
 
     if (!activeMeshes || Object.keys(activeMeshes).length === 0) return;
@@ -305,7 +326,7 @@ export default function Viewer3D({
     // Keys to render depending on mode
     const renderKeys = viewMode === "agreement"
       ? ["brain", "FN", "FP", "TP"]
-      : ["brain", "WT", "TC", "ET"];
+      : ["brain", "simulated", "WT", "TC", "ET"];
 
     renderKeys.forEach((regionKey) => {
       const regionData = activeMeshes[regionKey];
@@ -318,7 +339,8 @@ export default function Viewer3D({
       geometry.computeVertexNormals();
 
       const cfg = REGION_CONFIG[regionKey] || { color: 0xffffff, depthWrite: true, renderOrder: 0 };
-      const defaultOpacity = regionKey === "brain" ? 0.18 : 0.75;
+      const defaultOpacity = regionKey === "brain" ? 0.18 : regionKey === "simulated" ? simulationOpacity : 0.75;
+
       const material = new THREE.MeshStandardMaterial({
         color: cfg.color,
         roughness: cfg.roughness ?? 0.35,
@@ -328,6 +350,7 @@ export default function Viewer3D({
         wireframe: wireframe,
         side: THREE.DoubleSide,
         depthWrite: cfg.depthWrite,
+        clippingPlanes: (regionKey === "brain" && cutaway) ? [clipPlaneRef.current] : [],
       });
 
       const mesh = new THREE.Mesh(geometry, material);
@@ -349,7 +372,7 @@ export default function Viewer3D({
 
     // Frame camera
     resetCamera(maxDim);
-  }, [regions, expertMeshes, agreementMeshes, viewMode]);
+  }, [regions, expertMeshes, agreementMeshes, simulatedMesh, showSimulation, viewMode]);
 
   // 3. Update 3D Crosshair Marker position when worldCrosshair changes
   useEffect(() => {
@@ -364,19 +387,25 @@ export default function Viewer3D({
     }
   }, [worldCrosshair]);
 
-  // 4. Update visibility, opacity & wireframe without rebuilding geometry
+  // 4. Update visibility, opacity, wireframe & cutaway clipping without rebuilding geometry
   useEffect(() => {
-    ["brain", "WT", "TC", "ET", "TP", "FP", "FN"].forEach((regionKey) => {
+    ["brain", "WT", "TC", "ET", "TP", "FP", "FN", "simulated"].forEach((regionKey) => {
       const mesh = meshesRef.current[regionKey];
       if (mesh && mesh.material) {
         mesh.visible = visibleRegions[regionKey] !== false;
-        const defaultOpacity = regionKey === "brain" ? 0.18 : 0.75;
+        const defaultOpacity = regionKey === "brain" ? 0.18 : regionKey === "simulated" ? simulationOpacity : 0.75;
         mesh.material.opacity = opacities[regionKey] ?? defaultOpacity;
         mesh.material.wireframe = wireframe;
+
+        // Cutaway clipping plane on brain anatomy shell
+        if (regionKey === "brain") {
+          mesh.material.clippingPlanes = cutaway ? [clipPlaneRef.current] : [];
+        }
+
         mesh.material.needsUpdate = true;
       }
     });
-  }, [visibleRegions, opacities, wireframe]);
+  }, [visibleRegions, opacities, wireframe, cutaway, simulationOpacity]);
 
   const resetCamera = (dim) => {
     const camera = cameraRef.current;
@@ -391,8 +420,23 @@ export default function Viewer3D({
     controls.update();
   };
 
+  const focusScenario = () => {
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+    if (!camera || !controls) return;
+    const maxDim = boundingInfoRef.current.maxDim || 100;
+    const distance = maxDim * 1.5;
+    camera.position.set(distance * 0.5, distance * 0.5, distance * 0.9);
+    camera.lookAt(0, 0, 0);
+    controls.target.set(0, 0, 0);
+    controls.update();
+  };
+
   if (onResetViewRef) {
     onResetViewRef.current = () => resetCamera();
+  }
+  if (onFocusScenarioRef) {
+    onFocusScenarioRef.current = () => focusScenario();
   }
 
   const hasAnyMesh = Boolean(regions || expertMeshes || agreementMeshes);
@@ -400,6 +444,48 @@ export default function Viewer3D({
   return (
     <div className="viewport-card">
       <div ref={mountRef} className="canvas-container" />
+
+      {/* Professional Information HUD (Feature: Phase 3) */}
+      {hasAnyMesh && (
+        <div className="viewer-info-hud">
+          <div className="info-hud-row">
+            <span className="info-hud-label">Case:</span>
+            <span className="info-hud-val">{hudInfo?.caseId || "BraTS2021 Reference"}</span>
+          </div>
+          <div className="info-hud-row">
+            <span className="info-hud-label">Model:</span>
+            <span className="info-hud-val">SegResNet (v0.5.4)</span>
+          </div>
+          {hudInfo?.inferenceTime && (
+            <div className="info-hud-row">
+              <span className="info-hud-label">Inference:</span>
+              <span className="info-hud-val" style={{ color: "#10b981" }}>{hudInfo.inferenceTime}</span>
+            </div>
+          )}
+          {worldCrosshair && (
+            <div className="info-hud-row">
+              <span className="info-hud-label">Position:</span>
+              <span className="info-hud-val">
+                [{worldCrosshair[0] >= 0 ? "+" : ""}{worldCrosshair[0]}, {worldCrosshair[1] >= 0 ? "+" : ""}{worldCrosshair[1]}, {worldCrosshair[2] >= 0 ? "+" : ""}{worldCrosshair[2]} mm]
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Anatomical Orientation Markers (Feature: Phase 3) */}
+      {hasAnyMesh && (
+        <div className="anatomical-orientation-hud">
+          <span className="orientation-badge" title="Left / Right">L ⟷ R</span>
+          <span className="orientation-badge" title="Anterior / Posterior">A ⟷ P</span>
+          <span className="orientation-badge" title="Superior / Inferior">S ⟷ I</span>
+          {cutaway && (
+            <span className="orientation-badge" style={{ background: "rgba(239, 68, 68, 0.2)", color: "#ef4444", borderColor: "#ef4444" }}>
+              Cutaway Active
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Empty State Overlay */}
       {!hasAnyMesh && (
@@ -481,6 +567,14 @@ export default function Viewer3D({
             </>
           )}
 
+          {showSimulation && simulatedMesh && (
+            <div className="legend-item" style={{ borderTop: "1px dashed rgba(255, 255, 255, 0.1)", paddingTop: "4px", marginTop: "4px" }}>
+              <span className="region-color-dot" style={{ background: "#c084fc" }} />
+              <span style={{ color: "#c084fc", fontWeight: 600 }}>Simulated</span>
+              <span style={{ color: "var(--text-dim)", fontSize: "0.7rem" }}>Hypothetical expansion</span>
+            </div>
+          )}
+
           {regions?.brain && (
             <div className="legend-item" style={{ borderTop: "1px solid rgba(255, 255, 255, 0.08)", paddingTop: "4px", marginTop: "4px" }}>
               <span className="region-color-dot dot-brain" />
@@ -491,23 +585,17 @@ export default function Viewer3D({
         </div>
       )}
 
-      {/* 3D Crosshair Position HUD */}
-      {hasAnyMesh && worldCrosshair && (
-        <div className="viewer-crosshair-hud">
-          <span className="crosshair-hud-dot" />
-          <span className="crosshair-hud-label">3D Crosshair:</span>
-          <span>
-            [{worldCrosshair[0] >= 0 ? "+" : ""}{worldCrosshair[0]}, {worldCrosshair[1] >= 0 ? "+" : ""}{worldCrosshair[1]}, {worldCrosshair[2] >= 0 ? "+" : ""}{worldCrosshair[2]} mm]
-          </span>
-        </div>
-      )}
-
       {/* Viewer Bottom Controls */}
       {hasAnyMesh && (
         <div className="viewer-bottom-bar">
           <button onClick={() => resetCamera()} className="btn-reset-view">
             Reset View
           </button>
+          {showSimulation && (
+            <button onClick={focusScenario} className="btn-reset-view" style={{ background: "rgba(192, 132, 252, 0.2)", color: "#c084fc" }}>
+              Focus Scenario
+            </button>
+          )}
           <span>|</span>
           <span>Rotate: Left Click</span>
           <span>•</span>

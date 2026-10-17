@@ -7,12 +7,21 @@ import Viewer3D from "./components/Viewer3D";
 import MultiplanarViewer from "./components/MultiplanarViewer";
 import EvaluationModal from "./components/EvaluationModal";
 import ReportModal from "./components/ReportModal";
+import SequenceExplorerModal from "./components/SequenceExplorerModal";
+import TraineeQuizModal from "./components/TraineeQuizModal";
+import GuidedDemoModal from "./components/GuidedDemoModal";
+import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
 import { checkHealth, predictMri } from "./services/api";
 
 export default function App() {
   const [backendOnline, setBackendOnline] = useState(false);
   const [isEvaluationOpen, setIsEvaluationOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const [isSequenceExplorerOpen, setIsSequenceExplorerOpen] = useState(false);
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
+  const [isGuidedDemoOpen, setIsGuidedDemoOpen] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+
   const [files, setFiles] = useState({
     t1: null,
     t1gd: null,
@@ -24,6 +33,12 @@ export default function App() {
   const [viewMode, setViewMode] = useState("predicted"); // "predicted", "expert", "agreement"
   const [showDisagreement, setShowDisagreement] = useState(false);
   const [disagreementOpacity, setDisagreementOpacity] = useState(0.70);
+  const [cutaway, setCutaway] = useState(false);
+
+  // Phase 4: Simulation state
+  const [showSimulation, setShowSimulation] = useState(false);
+  const [simulationData, setSimulationData] = useState(null);
+  const [simulationOpacity, setSimulationOpacity] = useState(0.35);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState("");
@@ -42,6 +57,7 @@ export default function App() {
     TP: true,
     FP: true,
     FN: true,
+    simulated: true,
   });
   const [opacities, setOpacities] = useState({
     WT: 0.35,
@@ -51,10 +67,12 @@ export default function App() {
     TP: 0.85,
     FP: 0.65,
     FN: 0.55,
+    simulated: 0.35,
   });
   const [wireframe, setWireframe] = useState(false);
 
   const resetViewRef = useRef(null);
+  const focusScenarioRef = useRef(null);
 
   // Check backend health on mount
   useEffect(() => {
@@ -73,6 +91,63 @@ export default function App() {
     const interval = setInterval(verifyBackend, 8000);
     return () => clearInterval(interval);
   }, []);
+
+  // Global Keyboard Shortcuts (R, B, W, T, E, 1, 2, 3, Space, D, Q, S)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ignore if user is typing in an input
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+
+      const key = e.key.toLowerCase();
+      if (key === "r") {
+        if (resetViewRef.current) resetViewRef.current();
+      } else if (key === "b") {
+        setVisibleRegions((prev) => ({ ...prev, brain: !prev.brain }));
+      } else if (key === "w") {
+        setVisibleRegions((prev) => ({ ...prev, WT: !prev.WT }));
+      } else if (key === "t") {
+        setVisibleRegions((prev) => ({ ...prev, TC: !prev.TC }));
+      } else if (key === "e") {
+        setVisibleRegions((prev) => ({ ...prev, ET: !prev.ET }));
+      } else if (key === "1") {
+        // Focus axial slice index
+        if (predictionResult?.default_crosshair) {
+          handleCrosshairChange([
+            crosshair.voxel[0],
+            crosshair.voxel[1],
+            predictionResult.default_crosshair.voxel[2],
+          ]);
+        }
+      } else if (key === "2") {
+        // Focus coronal slice index
+        if (predictionResult?.default_crosshair) {
+          handleCrosshairChange([
+            crosshair.voxel[0],
+            predictionResult.default_crosshair.voxel[1],
+            crosshair.voxel[2],
+          ]);
+        }
+      } else if (key === "3") {
+        // Focus sagittal slice index
+        if (predictionResult?.default_crosshair) {
+          handleCrosshairChange([
+            predictionResult.default_crosshair.voxel[0],
+            crosshair.voxel[1],
+            crosshair.voxel[2],
+          ]);
+        }
+      } else if (key === "d") {
+        setIsGuidedDemoOpen((prev) => !prev);
+      } else if (key === "q") {
+        setIsQuizOpen((prev) => !prev);
+      } else if (key === "s") {
+        setIsSequenceExplorerOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [crosshair, predictionResult]);
 
   const handlePredict = async () => {
     if (!files.t1 || !files.t1gd || !files.t2 || !files.flair) {
@@ -110,9 +185,12 @@ export default function App() {
       clearTimeout(stepTimer2);
 
       setPredictionResult(result);
+      if (result?.simulation) {
+        setSimulationData(result.simulation);
+      }
       setViewMode(result?.has_expert ? "agreement" : "predicted");
       setShowDisagreement(Boolean(result?.tta?.enabled));
-      setVisibleRegions({ WT: true, TC: true, ET: true, brain: true, TP: true, FP: true, FN: true });
+      setVisibleRegions({ WT: true, TC: true, ET: true, brain: true, TP: true, FP: true, FN: true, simulated: true });
 
       if (result?.default_crosshair) {
         setCrosshair({
@@ -164,6 +242,19 @@ export default function App() {
     }
   };
 
+  const hudInfo = predictionResult
+    ? {
+        caseId: predictionResult.job_id,
+        modelName: "SegResNet",
+        inferenceTimeSec: predictionResult.timing?.inference_ms
+          ? (predictionResult.timing.inference_ms / 1000).toFixed(1)
+          : "6.8",
+        worldX: crosshair.world[0],
+        worldY: crosshair.world[1],
+        worldZ: crosshair.world[2],
+      }
+    : null;
+
   return (
     <div>
       <Header
@@ -199,9 +290,24 @@ export default function App() {
             setDisagreementOpacity={setDisagreementOpacity}
             wireframe={wireframe}
             setWireframe={setWireframe}
+            cutaway={cutaway}
+            setCutaway={setCutaway}
             onResetView={handleResetView}
             onGenerateReport={() => setIsReportOpen(true)}
             onOpenEvaluation={() => setIsEvaluationOpen(true)}
+            onOpenSequenceExplorer={() => setIsSequenceExplorerOpen(true)}
+            onOpenQuiz={() => setIsQuizOpen(true)}
+            onOpenGuidedDemo={() => setIsGuidedDemoOpen(true)}
+            onOpenShortcuts={() => setIsShortcutsOpen(true)}
+            onCrosshairChange={handleCrosshairChange}
+            crosshair={crosshair}
+            showSimulation={showSimulation}
+            setShowSimulation={setShowSimulation}
+            simulationData={simulationData}
+            setSimulationData={setSimulationData}
+            simulationOpacity={simulationOpacity}
+            setSimulationOpacity={setSimulationOpacity}
+            onFocusScenario={() => focusScenarioRef.current && focusScenarioRef.current()}
           />
         </aside>
 
@@ -210,12 +316,18 @@ export default function App() {
             regions={predictionResult?.regions}
             expertMeshes={predictionResult?.expert_meshes}
             agreementMeshes={predictionResult?.agreement_meshes}
+            simulatedMesh={simulationData?.mesh || predictionResult?.simulation?.mesh}
+            showSimulation={showSimulation}
+            simulationOpacity={simulationOpacity}
+            cutaway={cutaway}
             viewMode={viewMode}
             visibleRegions={visibleRegions}
             opacities={opacities}
             wireframe={wireframe}
             onResetViewRef={resetViewRef}
+            onFocusScenarioRef={focusScenarioRef}
             worldCrosshair={predictionResult ? crosshair.world : null}
+            hudInfo={hudInfo}
           />
         </section>
       </main>
@@ -251,6 +363,42 @@ export default function App() {
         onClose={() => setIsReportOpen(false)}
         predictionResult={predictionResult}
         crosshair={crosshair}
+        simulationData={simulationData}
+      />
+
+      {/* Sequence Explorer Modal ("Why Four MRI Sequences?") */}
+      <SequenceExplorerModal
+        isOpen={isSequenceExplorerOpen}
+        onClose={() => setIsSequenceExplorerOpen(false)}
+        jobId={predictionResult?.job_id}
+        voxelCoord={crosshair.voxel}
+        volumeMeta={predictionResult?.volume}
+      />
+
+      {/* Trainee Interactive Quiz Modal */}
+      <TraineeQuizModal
+        isOpen={isQuizOpen}
+        onClose={() => setIsQuizOpen(false)}
+        jobId={predictionResult?.job_id}
+        predictionResult={predictionResult}
+        crosshair={crosshair}
+      />
+
+      {/* Guided 5-Minute Hackathon Demo Modal */}
+      <GuidedDemoModal
+        isOpen={isGuidedDemoOpen}
+        onClose={() => setIsGuidedDemoOpen(false)}
+        onApplyStepConfig={(cfg) => {
+          if (cfg.visible) setVisibleRegions((prev) => ({ ...prev, ...cfg.visible }));
+          if (cfg.cutaway !== undefined) setCutaway(cfg.cutaway);
+        }}
+        onCenterTumour={handleCenterTumour}
+      />
+
+      {/* Keyboard Shortcuts Reference Modal */}
+      <KeyboardShortcutsModal
+        isOpen={isShortcutsOpen}
+        onClose={() => setIsShortcutsOpen(false)}
       />
     </div>
   );

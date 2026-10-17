@@ -104,3 +104,13 @@ export async function fetchSlice({
   }
   return res.json();
 }
+
+export async function fetchSimulation({ jobId, expansionPct = 25 }) {
+  const res = await fetch(`${API_BASE}/api/result/${jobId}/simulate?expansion_pct=${expansionPct}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData?.detail || `Simulation failed: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+

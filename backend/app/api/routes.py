@@ -22,6 +22,7 @@ from backend.app.postprocessing.agreement import (
 from evaluation.metrics import extract_ground_truth_subregions
 from backend.app.visualization.mesh import generate_all_region_meshes
 from backend.app.visualization.slices import extract_slice_data, slice_3d_volume, render_slice_image_b64
+from backend.app.postprocessing.simulation import simulate_hypothetical_expansion
 
 router = APIRouter()
 
@@ -303,6 +304,14 @@ async def predict_mri(
             "timing": timing,
         }
 
+        # 8. Hypothetical Spatial Impact Simulation (Phase 4)
+        simulation_data = simulate_hypothetical_expansion(
+            wt_mask=wt_mask,
+            affine=affine,
+            expansion_pct=25.0,
+            t1_data=raw_volumes.get("t1")
+        )
+
         job_id = uuid.uuid4().hex[:12]
         result = {
             "status": "success",
@@ -330,6 +339,7 @@ async def predict_mri(
             "expert_agreement": agreement_metrics,
             "expert_meshes": expert_meshes,
             "agreement_meshes": agreement_meshes,
+            "simulation": simulation_data,
         }
 
         # Cache in memory
@@ -376,6 +386,42 @@ async def get_result(job_id: str):
             detail=f"Result for job '{job_id}' not found or expired."
         )
     return JSONResponse(content=_JOBS_CACHE[job_id]["result_summary"])
+
+@router.get("/api/result/{job_id}/simulate")
+async def simulate_expansion(
+    job_id: str,
+    expansion_pct: float = Query(25.0, description="Hypothetical expansion percentage (0, 10, 25, 50, 100)")
+):
+    """
+    Computes a mathematical hypothetical expansion around the model-predicted WT region
+    in physical millimeters.
+    Research visualization only — not a prediction of tumour growth, tissue damage, or prognosis.
+    """
+    if job_id not in _JOBS_CACHE:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Result for job '{job_id}' not found or expired."
+        )
+
+    job_data = _JOBS_CACHE[job_id]
+    wt_mask = job_data["wt_mask"]
+    affine = job_data["affine"]
+    t1_data = job_data["volumes"].get("t1")
+
+    try:
+        sim_result = simulate_hypothetical_expansion(
+            wt_mask=wt_mask,
+            affine=affine,
+            expansion_pct=expansion_pct,
+            t1_data=t1_data,
+        )
+        return JSONResponse(content=sim_result)
+    except Exception as e:
+        print(f"[NeuroScope] Error during hypothetical simulation: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to compute simulation: {str(e)}"
+        )
 
 @router.get("/api/result/{job_id}/slice")
 async def get_slice(

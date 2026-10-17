@@ -1,10 +1,10 @@
 {
   "num_cases_evaluated": 11,
-  "mean_inference_seconds": 6.91,
+  "mean_inference_seconds": 6.28,
   "cases": [
     {
       "case_id": "BraTS2021_00002",
-      "inference_seconds": 6.15,
+      "inference_seconds": 6.09,
       "volume_shape": [
         240,
         240,
@@ -48,7 +48,7 @@
     },
     {
       "case_id": "BraTS2021_00003",
-      "inference_seconds": 6.23,
+      "inference_seconds": 6.04,
       "volume_shape": [
         240,
         240,
@@ -92,7 +92,7 @@
     },
     {
       "case_id": "BraTS2021_00005",
-      "inference_seconds": 6.27,
+      "inference_seconds": 6.07,
       "volume_shape": [
         240,
         240,
@@ -136,7 +136,7 @@
     },
     {
       "case_id": "BraTS2021_00006",
-      "inference_seconds": 6.43,
+      "inference_seconds": 6.18,
       "volume_shape": [
         240,
         240,
@@ -180,7 +180,7 @@
     },
     {
       "case_id": "BraTS2021_00008",
-      "inference_seconds": 6.42,
+      "inference_seconds": 6.22,
       "volume_shape": [
         240,
         240,
@@ -224,7 +224,7 @@
     },
     {
       "case_id": "BraTS2021_00009",
-      "inference_seconds": 6.4,
+      "inference_seconds": 6.22,
       "volume_shape": [
         240,
         240,
@@ -268,7 +268,7 @@
     },
     {
       "case_id": "BraTS2021_00011",
-      "inference_seconds": 6.47,
+      "inference_seconds": 6.29,
       "volume_shape": [
         240,
         240,
@@ -312,7 +312,7 @@
     },
     {
       "case_id": "BraTS2021_00012",
-      "inference_seconds": 6.93,
+      "inference_seconds": 6.63,
       "volume_shape": [
         240,
         240,
@@ -356,7 +356,7 @@
     },
     {
       "case_id": "BraTS2021_00014",
-      "inference_seconds": 7.56,
+      "inference_seconds": 6.49,
       "volume_shape": [
         240,
         240,
@@ -400,7 +400,7 @@
     },
     {
       "case_id": "BraTS2021_00016",
-      "inference_seconds": 8.04,
+      "inference_seconds": 6.46,
       "volume_shape": [
         240,
         240,
@@ -444,7 +444,7 @@
     },
     {
       "case_id": "BraTS2021_00017",
-      "inference_seconds": 9.11,
+      "inference_seconds": 6.43,
       "volume_shape": [
         240,
         240,

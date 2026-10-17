@@ -1,7 +1,7 @@
 {
   "milestone": "Milestone 4 \u2014 Validation & Evaluation",
-  "timestamp_utc": "2026-10-16T17:50:02.583031Z",
-  "total_duration_seconds": 90.41,
+  "timestamp_utc": "2026-10-16T23:55:51.544575Z",
+  "total_duration_seconds": 86.21,
   "suites": {
     "orientation_affine": {
       "status": "PASS",
@@ -91,7 +91,7 @@
         {
           "test": "corrupted_file_bytes",
           "status": "PASS",
-          "rejection_message": "Invalid NIfTI file 'corrupted.nii.gz': File /var/folders/vz/1_65jr7d1ws54b5d5n18cz040000gn/T/tmpqhfbl4xa.nii.gz is not a gzip file"
+          "rejection_message": "Invalid NIfTI file 'corrupted.nii.gz': File /var/folders/vz/1_65jr7d1ws54b5d5n18cz040000gn/T/tmpqo1j0i3o.nii.gz is not a gzip file"
         },
         {
           "test": "empty_file_bytes",
@@ -134,6 +134,70 @@
             "TC": 7878,
             "ET": 11067
           }
+        }
+      ]
+    },
+    "patient_specific_brain_anatomy": {
+      "status": "PASS",
+      "tests": [
+        {
+          "test": "brain_mask_extraction",
+          "status": "PASS"
+        },
+        {
+          "test": "patient_specific_brain_mesh_generation",
+          "status": "PASS",
+          "vertex_count": 26972,
+          "face_count": 53940,
+          "bbox": {
+            "min": [
+              -187.38,
+              29.11,
+              3.97
+            ],
+            "max": [
+              -51.38,
+              199.62,
+              148.97
+            ]
+          }
+        },
+        {
+          "test": "spatial_alignment_tumour_and_crosshair",
+          "status": "PASS",
+          "wt_bbox": {
+            "min": [
+              -149.5,
+              69.5,
+              64.5
+            ],
+            "max": [
+              -129.5,
+              89.5,
+              84.5
+            ]
+          },
+          "brain_bbox": {
+            "min": [
+              -187.38,
+              29.11,
+              3.97
+            ],
+            "max": [
+              -51.38,
+              199.62,
+              148.97
+            ]
+          },
+          "crosshair_world_mm": [
+            -140.0,
+            79.0,
+            75.0
+          ]
+        },
+        {
+          "test": "backward_compatibility",
+          "status": "PASS"
         }
       ]
     },
@@ -184,7 +248,7 @@
       "cases": [
         {
           "case_id": "BraTS2021_00002",
-          "inference_seconds": 6.15,
+          "inference_seconds": 6.09,
           "volume_shape": [
             240,
             240,
@@ -228,7 +292,7 @@
         },
         {
           "case_id": "BraTS2021_00003",
-          "inference_seconds": 6.23,
+          "inference_seconds": 6.04,
           "volume_shape": [
             240,
             240,
@@ -272,7 +336,7 @@
         },
         {
           "case_id": "BraTS2021_00005",
-          "inference_seconds": 6.27,
+          "inference_seconds": 6.07,
           "volume_shape": [
             240,
             240,
@@ -316,7 +380,7 @@
         },
         {
           "case_id": "BraTS2021_00006",
-          "inference_seconds": 6.43,
+          "inference_seconds": 6.18,
           "volume_shape": [
             240,
             240,
@@ -360,7 +424,7 @@
         },
         {
           "case_id": "BraTS2021_00008",
-          "inference_seconds": 6.42,
+          "inference_seconds": 6.22,
           "volume_shape": [
             240,
             240,
@@ -404,7 +468,7 @@
         },
         {
           "case_id": "BraTS2021_00009",
-          "inference_seconds": 6.4,
+          "inference_seconds": 6.22,
           "volume_shape": [
             240,
             240,
@@ -448,7 +512,7 @@
         },
         {
           "case_id": "BraTS2021_00011",
-          "inference_seconds": 6.47,
+          "inference_seconds": 6.29,
           "volume_shape": [
             240,
             240,
@@ -492,7 +556,7 @@
         },
         {
           "case_id": "BraTS2021_00012",
-          "inference_seconds": 6.93,
+          "inference_seconds": 6.63,
           "volume_shape": [
             240,
             240,
@@ -536,7 +600,7 @@
         },
         {
           "case_id": "BraTS2021_00014",
-          "inference_seconds": 7.56,
+          "inference_seconds": 6.49,
           "volume_shape": [
             240,
             240,
@@ -580,7 +644,7 @@
         },
         {
           "case_id": "BraTS2021_00016",
-          "inference_seconds": 8.04,
+          "inference_seconds": 6.46,
           "volume_shape": [
             240,
             240,
@@ -624,7 +688,7 @@
         },
         {
           "case_id": "BraTS2021_00017",
-          "inference_seconds": 9.11,
+          "inference_seconds": 6.43,
           "volume_shape": [
             240,
             240,
