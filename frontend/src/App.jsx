@@ -3,6 +3,7 @@ import Header from "./components/Header";
 import DisclaimerBanner from "./components/DisclaimerBanner";
 import UploadPanel from "./components/UploadPanel";
 import ControlsPanel from "./components/ControlsPanel";
+import AnalysisPanel from "./components/AnalysisPanel";
 import Viewer3D from "./components/Viewer3D";
 import MultiplanarViewer from "./components/MultiplanarViewer";
 import EvaluationModal from "./components/EvaluationModal";
@@ -57,6 +58,12 @@ export default function App() {
     TP: 0.85,
     FP: 0.65,
     FN: 0.55,
+  });
+  // Variable Tumour Size / Volume scales (1.0 = original 100% predicted size)
+  const [tumourScales, setTumourScales] = useState({
+    WT: 1.0,
+    TC: 1.0,
+    ET: 1.0,
   });
   const [wireframe, setWireframe] = useState(false);
 
@@ -119,6 +126,7 @@ export default function App() {
       setViewMode(result?.has_expert ? "agreement" : "predicted");
       setShowDisagreement(Boolean(result?.tta?.enabled));
       setVisibleRegions({ WT: true, TC: true, ET: true, brain: true, TP: true, FP: true, FN: true });
+      setTumourScales({ WT: 1.0, TC: 1.0, ET: 1.0 });
 
       if (result?.default_crosshair) {
         setCrosshair({
@@ -191,9 +199,10 @@ export default function App() {
       />
       <DisclaimerBanner />
 
-      <main className="app-main">
+      {/* 3-Column Workstation Layout: Left Controls | Center 3D + 2D Workspace | Right Analysis */}
+      <main className="app-workspace-layout">
         {/* Left Control Sidebar */}
-        <aside className="sidebar">
+        <aside className="sidebar-column left-sidebar">
           <UploadPanel
             files={files}
             setFiles={setFiles}
@@ -210,6 +219,8 @@ export default function App() {
             setVisibleRegions={setVisibleRegions}
             opacities={opacities}
             setOpacities={setOpacities}
+            tumourScales={tumourScales}
+            setTumourScales={setTumourScales}
             predictionResult={predictionResult}
             viewMode={viewMode}
             setViewMode={setViewMode}
@@ -222,51 +233,62 @@ export default function App() {
             cutaway={cutaway}
             setCutaway={setCutaway}
             onResetView={handleResetView}
-            onGenerateReport={() => setIsReportOpen(true)}
-            onOpenEvaluation={() => setIsEvaluationOpen(true)}
             onOpenSequenceExplorer={() => setIsSequenceExplorerOpen(true)}
             onOpenGuidedDemo={() => setIsGuidedDemoOpen(true)}
-            onCrosshairChange={handleCrosshairChange}
-            crosshair={crosshair}
           />
         </aside>
 
-        {/* Center: Dominant 3D Brain & Tumour Visualization */}
-        <section className="viewport-center-section">
-          <Viewer3D
-            regions={predictionResult?.regions}
-            expertMeshes={predictionResult?.expert_meshes}
-            agreementMeshes={predictionResult?.agreement_meshes}
-            cutaway={cutaway}
-            viewMode={viewMode}
-            visibleRegions={visibleRegions}
-            opacities={opacities}
-            wireframe={wireframe}
-            onResetViewRef={resetViewRef}
-            worldCrosshair={predictionResult ? crosshair.world : null}
-            hudInfo={hudInfo}
-          />
-        </section>
-      </main>
+        {/* Center Workspace: Main 3D Brain Viewer + 3 Synchronized 2D Orthogonal Slices */}
+        <section className="center-workspace-column">
+          <div className="viewer-3d-card-wrap">
+            <Viewer3D
+              regions={predictionResult?.regions}
+              expertMeshes={predictionResult?.expert_meshes}
+              agreementMeshes={predictionResult?.agreement_meshes}
+              cutaway={cutaway}
+              viewMode={viewMode}
+              visibleRegions={visibleRegions}
+              opacities={opacities}
+              tumourScales={tumourScales}
+              wireframe={wireframe}
+              onResetViewRef={resetViewRef}
+              worldCrosshair={predictionResult ? crosshair.world : null}
+              hudInfo={hudInfo}
+            />
+          </div>
 
-      {/* Linked Orthogonal 2D Multiplanar MRI View */}
-      {predictionResult && (
-        <section className="multiplanar-section">
-          <MultiplanarViewer
-            jobId={predictionResult.job_id}
-            volumeMeta={predictionResult.volume}
-            voxelCoord={crosshair.voxel}
-            worldCoord={crosshair.world}
-            visibleRegions={visibleRegions}
-            opacities={opacities}
-            viewMode={viewMode}
-            showDisagreement={showDisagreement}
-            disagreementOpacity={disagreementOpacity}
-            onCrosshairChange={handleCrosshairChange}
-            onCenterTumour={handleCenterTumour}
-          />
+          {/* Linked Orthogonal 2D MRI Views directly below 3D Brain */}
+          {predictionResult && (
+            <div className="multiplanar-card-wrap">
+              <MultiplanarViewer
+                jobId={predictionResult.job_id}
+                volumeMeta={predictionResult.volume}
+                voxelCoord={crosshair.voxel}
+                worldCoord={crosshair.world}
+                visibleRegions={visibleRegions}
+                opacities={opacities}
+                viewMode={viewMode}
+                showDisagreement={showDisagreement}
+                disagreementOpacity={disagreementOpacity}
+                onCrosshairChange={handleCrosshairChange}
+                onCenterTumour={handleCenterTumour}
+              />
+            </div>
+          )}
         </section>
-      )}
+
+        {/* Right Analysis Sidebar */}
+        <aside className="sidebar-column right-sidebar">
+          <AnalysisPanel
+            predictionResult={predictionResult}
+            tumourScales={tumourScales}
+            crosshair={crosshair}
+            onCrosshairChange={handleCrosshairChange}
+            onOpenEvaluation={() => setIsEvaluationOpen(true)}
+            onGenerateReport={() => setIsReportOpen(true)}
+          />
+        </aside>
+      </main>
 
       {/* Evaluation Benchmarks Dashboard Modal */}
       <EvaluationModal

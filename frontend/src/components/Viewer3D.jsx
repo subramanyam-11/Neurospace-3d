@@ -132,6 +132,7 @@ export default function Viewer3D({
   viewMode = "predicted", // "predicted", "expert", "agreement"
   visibleRegions = { WT: true, TC: true, ET: true, brain: true, TP: true, FP: true, FN: true },
   opacities = { WT: 0.35, TC: 0.65, ET: 0.85, brain: 0.22, TP: 0.85, FP: 0.65, FN: 0.55 },
+  tumourScales = { WT: 1.0, TC: 1.0, ET: 1.0 },
   wireframe = false,
   onResetViewRef = null,
   worldCrosshair = null,
@@ -144,6 +145,7 @@ export default function Viewer3D({
   const groupRef = useRef(null);
   const crosshairGroupRef = useRef(null);
   const meshesRef = useRef({});
+  const meshCentroidsRef = useRef({});
   const boundingInfoRef = useRef({ center: new THREE.Vector3(0, 0, 0), radius: 100 });
   const clipPlaneRef = useRef(new THREE.Plane(new THREE.Vector3(0, 0, 1), 10)); // Sagittal/axial section clip
 
@@ -334,6 +336,21 @@ export default function Viewer3D({
 
       geometry.computeBoundingBox();
       if (geometry.boundingBox) {
+        const meshCenter = new THREE.Vector3();
+        geometry.boundingBox.getCenter(meshCenter);
+        meshCentroidsRef.current[regionKey] = meshCenter;
+
+        // Apply tumour scale factor around centroid
+        if (["WT", "TC", "ET"].includes(regionKey)) {
+          const s = tumourScales?.[regionKey] ?? 1.0;
+          mesh.scale.set(s, s, s);
+          mesh.position.set(
+            meshCenter.x * (1 - s),
+            meshCenter.y * (1 - s),
+            meshCenter.z * (1 - s)
+          );
+        }
+
         globalBox.union(geometry.boundingBox);
         hasValidMesh = true;
       }
@@ -406,6 +423,23 @@ export default function Viewer3D({
       }
     });
   }, [visibleRegions, opacities, wireframe, cutaway]);
+
+  // 5. Update tumour subregion scale factor dynamically around their centroids
+  useEffect(() => {
+    ["WT", "TC", "ET"].forEach((regionKey) => {
+      const mesh = meshesRef.current[regionKey];
+      const center = meshCentroidsRef.current[regionKey];
+      const s = tumourScales?.[regionKey] ?? 1.0;
+      if (mesh && center) {
+        mesh.scale.set(s, s, s);
+        mesh.position.set(
+          center.x * (1 - s),
+          center.y * (1 - s),
+          center.z * (1 - s)
+        );
+      }
+    });
+  }, [tumourScales]);
 
   const resetCamera = (dim) => {
     const camera = cameraRef.current;

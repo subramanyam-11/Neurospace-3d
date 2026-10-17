@@ -6,18 +6,21 @@ const REGIONS = [
     label: "Whole Tumour (WT)",
     desc: "Complete hyperintense tumour volume & oedema",
     dotClass: "dot-wt",
+    color: "#38bdf8",
   },
   {
     key: "TC",
     label: "Tumour Core (TC)",
     desc: "Non-enhancing necrotic components + enhancing rim",
     dotClass: "dot-tc",
+    color: "#f59e0b",
   },
   {
     key: "ET",
     label: "Enhancing Tumour (ET)",
     desc: "Active hypervascular rim",
     dotClass: "dot-et",
+    color: "#ef4444",
   },
 ];
 
@@ -59,6 +62,8 @@ export default function ControlsPanel({
   setVisibleRegions,
   opacities,
   setOpacities,
+  tumourScales = { WT: 1.0, TC: 1.0, ET: 1.0 },
+  setTumourScales,
   predictionResult = null,
   viewMode = "predicted", // "predicted", "expert", "agreement"
   setViewMode,
@@ -71,21 +76,12 @@ export default function ControlsPanel({
   cutaway = false,
   setCutaway,
   onResetView,
-  onGenerateReport,
-  onOpenEvaluation,
   onOpenSequenceExplorer,
   onOpenGuidedDemo,
-  onCrosshairChange,
-  crosshair,
 }) {
-  const [showResearchSafety, setShowResearchSafety] = useState(false);
   const [activeTeachingStep, setActiveTeachingStep] = useState(null); // null or 0, 1, 2
-  const [selectedInspectorRegion, setSelectedInspectorRegion] = useState("WT");
-  const [jumpNotification, setJumpNotification] = useState("");
 
-  const metrics = predictionResult?.metrics;
   const hasExpert = Boolean(predictionResult?.has_expert && predictionResult?.expert_agreement);
-  const agreement = predictionResult?.expert_agreement;
 
   const toggleRegion = (key) => {
     setVisibleRegions((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -93,6 +89,14 @@ export default function ControlsPanel({
 
   const handleOpacityChange = (key, val) => {
     setOpacities((prev) => ({ ...prev, [key]: parseFloat(val) }));
+  };
+
+  const handleScaleChange = (key, val) => {
+    setTumourScales((prev) => ({ ...prev, [key]: parseFloat(val) }));
+  };
+
+  const handleResetScales = () => {
+    setTumourScales({ WT: 1.0, TC: 1.0, ET: 1.0 });
   };
 
   // Quick View Modes
@@ -132,7 +136,6 @@ export default function ControlsPanel({
     if (!step) return;
     setVisibleRegions((prev) => ({ ...prev, ...step.visible }));
     setOpacities((prev) => ({ ...prev, ...step.opacities }));
-    setSelectedInspectorRegion(step.focusRegion);
   };
 
   const handleNextTeaching = () => {
@@ -156,37 +159,24 @@ export default function ControlsPanel({
     handleSetQuickMode("full");
   };
 
-  // Smart Crosshair Navigation
-  const handleJumpToCentroid = (regKey) => {
-    const regData = metrics?.regions?.[regKey];
-    if (regData?.centroid_voxel && onCrosshairChange) {
-      onCrosshairChange(regData.centroid_voxel);
-      setJumpNotification(`Crosshair moved to estimated ${regKey} region centroid.`);
-      setTimeout(() => setJumpNotification(""), 3500);
-    }
-  };
-
-  // Inspector distance calculation
-  const getInspectorDistance = () => {
-    const reg = metrics?.regions?.[selectedInspectorRegion];
-    if (!reg?.centroid_world_mm || !crosshair?.world) return "--";
-    const dx = crosshair.world[0] - reg.centroid_world_mm[0];
-    const dy = crosshair.world[1] - reg.centroid_world_mm[1];
-    const dz = crosshair.world[2] - reg.centroid_world_mm[2];
-    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    return `${dist.toFixed(1)} mm`;
-  };
-
-  const inspectedRegion = metrics?.regions?.[selectedInspectorRegion];
+  const isAnyScaleAdjusted =
+    Math.abs((tumourScales?.WT ?? 1.0) - 1.0) > 0.01 ||
+    Math.abs((tumourScales?.TC ?? 1.0) - 1.0) > 0.01 ||
+    Math.abs((tumourScales?.ET ?? 1.0) - 1.0) > 0.01;
 
   return (
-    <div className="panel-card workstation-controls-card">
-      <div className="panel-header">
+    <div className="controls-panel-root">
+      {/* Top Header Card */}
+      <div className="panel-top-bar">
         <div>
           <h2 className="panel-title">Workspace Controls</h2>
-          <p className="panel-desc">Anatomy view modes, subregions &amp; quantitative inspection</p>
+          <p className="panel-desc">Anatomy view modes, subregions &amp; variable scale</p>
         </div>
-        <button onClick={onResetView} className="btn-reset-view">
+        <button
+          onClick={onResetView}
+          className="btn-reset-view"
+          title="Reset 3D camera to optimal axial/anterior framing"
+        >
           Reset View
         </button>
       </div>
@@ -196,56 +186,51 @@ export default function ControlsPanel({
         <div className="section-label-bar">
           <span className="section-title">VIEW MODES</span>
         </div>
-        <div className="quick-modes-grid">
+        <div className="view-modes-grid">
           <button
             onClick={() => handleSetQuickMode("full")}
-            className="btn-quick-mode"
-            title="Brain shell + all tumour subregions"
+            className="btn-view-mode"
           >
             Full Anatomy
           </button>
           <button
             onClick={() => handleSetQuickMode("tumour_only")}
-            className="btn-quick-mode"
-            title="Hide cortical brain shell"
+            className="btn-view-mode"
           >
             Tumour Only
           </button>
           <button
             onClick={() => handleSetQuickMode("anatomy_only")}
-            className="btn-quick-mode"
-            title="Hide all tumour subregions"
+            className="btn-view-mode"
           >
             Anatomy Only
           </button>
           <button
             onClick={() => handleSetQuickMode("inside_brain")}
-            className="btn-quick-mode"
-            title="Translucent brain shell with high-contrast core"
+            className="btn-view-mode"
           >
             Tumour Inside Brain
           </button>
+          <button
+            onClick={() => handleSetQuickMode("cutaway")}
+            className={`btn-view-mode full-width ${cutaway ? "active-cutaway" : ""}`}
+          >
+            {cutaway ? "✕ Disable Section Cutaway" : "✂ 3D Anatomy Cutaway / Section View"}
+          </button>
         </div>
-        <button
-          onClick={() => handleSetQuickMode("cutaway")}
-          className={`btn-cutaway-toggle ${cutaway ? "active" : ""}`}
-          title="Section view clipping plane through brain anatomy"
-        >
-          {cutaway ? "✓ Cutaway / Section View Active" : "✂ 3D Anatomy Cutaway / Section View"}
-        </button>
       </div>
 
-      {/* SECTION: TEACHING & DEMO */}
+      {/* SECTION: TEACHING & EXPLORATION */}
       <div className="control-section">
         <div className="section-label-bar">
           <span className="section-title">TEACHING &amp; EXPLORATION</span>
           <span className="section-badge">Interactive</span>
         </div>
 
-        <div className="teaching-buttons-grid">
+        <div className="teaching-actions-grid">
           <button
             onClick={activeTeachingStep !== null ? handleExitTeaching : handleStartTeaching}
-            className={`btn-teaching-action ${activeTeachingStep !== null ? "active" : ""}`}
+            className={`btn-teaching-action ${activeTeachingStep !== null ? "active-step" : ""}`}
           >
             {activeTeachingStep !== null ? "Exit Tumour Reveal" : "🔬 Explore Tumour Layers"}
           </button>
@@ -300,7 +285,7 @@ export default function ControlsPanel({
         )}
       </div>
 
-      {/* SECTION: SEGMENTATION SUBREGIONS */}
+      {/* SECTION: SEGMENTATION SUBREGIONS (OPACITIES & VISIBILITY) */}
       <div className="control-section">
         <div className="section-label-bar">
           <span className="section-title">SEGMENTATION SUBREGIONS</span>
@@ -408,158 +393,112 @@ export default function ControlsPanel({
         </div>
       </div>
 
-      {/* SECTION: QUANTITATIVE ANALYSIS & VOLUME CARDS */}
-      {metrics?.regions && (
-        <div className="control-section">
-          <div className="section-label-bar">
-            <span className="section-title">QUANTITATIVE ANALYSIS</span>
-          </div>
-
-          {/* High-visibility Volume Summary Cards (Requirement 8) */}
-          <div className="prominent-volumes-container">
-            <div className="volume-card-item wt-card">
-              <div className="volume-card-title">WHOLE TUMOUR (WT)</div>
-              <div className="volume-card-val">{metrics.regions?.WT?.estimated_volume_cm3 ?? "--"} cm³</div>
-              <div className="volume-card-vox">{metrics.regions?.WT?.voxel_count?.toLocaleString()} voxels</div>
-              <div className="volume-card-desc">Complete lesion &amp; vasogenic oedema</div>
-            </div>
-
-            <div className="volume-card-item tc-card">
-              <div className="volume-card-title">TUMOUR CORE (TC)</div>
-              <div className="volume-card-val">{metrics.regions?.TC?.estimated_volume_cm3 ?? "--"} cm³</div>
-              <div className="volume-card-vox">{metrics.regions?.TC?.voxel_count?.toLocaleString()} voxels</div>
-              <div className="volume-card-desc">Necrotic components + active rim</div>
-            </div>
-
-            <div className="volume-card-item et-card">
-              <div className="volume-card-title">ENHANCING TUMOUR (ET)</div>
-              <div className="volume-card-val">{metrics.regions?.ET?.estimated_volume_cm3 ?? "--"} cm³</div>
-              <div className="volume-card-vox">{metrics.regions?.ET?.voxel_count?.toLocaleString()} voxels</div>
-              <div className="volume-card-desc">Hypervascular enhancing periphery</div>
-            </div>
-          </div>
-
-          {/* Smart Crosshair Navigation Buttons */}
-          <div className="smart-nav-box">
-            <div className="smart-nav-title">Smart Centroid Targeting</div>
-            <div className="smart-nav-grid">
-              <button onClick={() => handleJumpToCentroid("WT")} className="btn-jump-target">
-                Jump to WT
-              </button>
-              <button onClick={() => handleJumpToCentroid("TC")} className="btn-jump-target">
-                Jump to TC
-              </button>
-              <button onClick={() => handleJumpToCentroid("ET")} className="btn-jump-target">
-                Jump to ET
-              </button>
-            </div>
-            {jumpNotification && (
-              <div className="jump-notification-text">✓ {jumpNotification}</div>
-            )}
-          </div>
-
-          {/* Region Inspector Card */}
-          <div className="region-inspector-box">
-            <div className="inspector-header">
-              <span className="inspector-title">REGION INSPECTOR</span>
-              <div className="inspector-tabs">
-                {["WT", "TC", "ET"].map((k) => (
-                  <button
-                    key={k}
-                    onClick={() => setSelectedInspectorRegion(k)}
-                    className={`inspector-tab-btn ${selectedInspectorRegion === k ? "selected" : ""}`}
-                  >
-                    {k}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {inspectedRegion && (
-              <div className="inspector-data-list">
-                <div className="inspector-data-row">
-                  <span className="data-key">Subregion:</span>
-                  <span className="data-val-bold">{inspectedRegion.name}</span>
-                </div>
-                <div className="inspector-data-row">
-                  <span className="data-key">Estimated Volume:</span>
-                  <span className="data-val-accent">{inspectedRegion.estimated_volume_cm3} cm³</span>
-                </div>
-                <div className="inspector-data-row">
-                  <span className="data-key">Voxel Count:</span>
-                  <span className="data-val">{inspectedRegion.voxel_count?.toLocaleString()} voxels</span>
-                </div>
-                <div className="inspector-data-row">
-                  <span className="data-key">Estimated Centroid:</span>
-                  <span className="data-val-mono">[{inspectedRegion.centroid_voxel?.join(", ") || "--"}]</span>
-                </div>
-                <div className="inspector-data-row">
-                  <span className="data-key">World Coordinates:</span>
-                  <span className="data-val-mono">
-                    {inspectedRegion.centroid_world_mm ? `(${inspectedRegion.centroid_world_mm.join(", ")}) mm` : "--"}
-                  </span>
-                </div>
-                <div className="inspector-data-row">
-                  <span className="data-key">Crosshair Distance:</span>
-                  <span className="data-val-dist">{getInspectorDistance()}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Evaluation Benchmarks Dashboard Quick Link */}
-          <button
-            onClick={onOpenEvaluation}
-            className="btn-benchmarks-link"
-          >
-            📊 View 11-Case Evaluation Benchmarks
-          </button>
-        </div>
-      )}
-
-      {/* SECTION: REPORT GENERATION */}
-      <div className="control-section">
-        <button
-          onClick={onGenerateReport}
-          className="btn-generate-report"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <span>Generate Research &amp; Provenance Report</span>
-        </button>
-      </div>
-
-      {/* SECTION: SAFETY & PROVENANCE */}
-      <div className="control-section safety-section">
-        {/* Local Processing Badge */}
-        <div className="local-processing-card">
-          <span className="lock-icon">🔒</span>
-          <div>
-            <div className="local-proc-title">LOCAL PROCESSING</div>
-            <div className="local-proc-desc">
-              Your MRI volumes are processed strictly on this machine. No external cloud AI service is contacted.
-            </div>
-          </div>
-        </div>
-
-        {/* Collapsible Research & Safety Panel */}
-        <div className="safety-disclosure-wrap">
-          <button
-            onClick={() => setShowResearchSafety(!showResearchSafety)}
-            className="btn-safety-disclosure-toggle"
-          >
-            <span>Research &amp; Safety Disclosures</span>
-            <span>{showResearchSafety ? "▲" : "▼"}</span>
-          </button>
-          {showResearchSafety && (
-            <div className="safety-disclosure-content">
-              <p>• <strong>Research &amp; Teaching Prototype:</strong> Displayed regions represent suspected tumour regions predicted by the model.</p>
-              <p>• <strong>Estimated Volumes:</strong> Derived mathematically from voxel dimensions in the NIfTI header.</p>
-              <p>• <strong>De-identified Data:</strong> Intended solely for public, de-identified research data.</p>
-              <p>• <strong>No Medical Diagnosis:</strong> This tool is not clinically validated for patient diagnosis or treatment planning.</p>
-            </div>
+      {/* NEW SECTION: VARIABLE TUMOUR SIZE / VOLUME (3 SLIDERS) */}
+      <div className="control-section variable-size-section">
+        <div className="section-label-bar">
+          <span className="section-title">VARIABLE TUMOUR SIZE / VOLUME</span>
+          {isAnyScaleAdjusted && (
+            <button
+              type="button"
+              onClick={handleResetScales}
+              className="btn-reset-scales"
+              title="Reset all tumour subregions to 1.00x original predicted volume"
+            >
+              ↺ Reset Sizes
+            </button>
           )}
+        </div>
+        <p className="section-subtitle-hint">
+          Simulate variable tumour scale in 3D &amp; live quantitative volume
+        </p>
+
+        <div className="size-sliders-list">
+          {/* Slider 1: Whole Tumour (WT) Size */}
+          <div className="size-slider-card wt-slider-card">
+            <div className="size-slider-header">
+              <div className="size-label-group">
+                <span className="size-dot dot-wt" />
+                <span className="size-title">WT Tumour Size</span>
+              </div>
+              <span className="size-val-pill wt-pill">
+                {(tumourScales?.WT ?? 1.0).toFixed(2)}× ({Math.round((tumourScales?.WT ?? 1.0) * 100)}%)
+              </span>
+            </div>
+            <div className="slider-track-wrap">
+              <input
+                type="range"
+                min="0.20"
+                max="2.00"
+                step="0.05"
+                value={tumourScales?.WT ?? 1.0}
+                onChange={(e) => handleScaleChange("WT", e.target.value)}
+                className="tumour-scale-slider wt-slider"
+              />
+              <div className="scale-marks-row">
+                <span>0.2×</span>
+                <span className="mark-center">1.0× (Base)</span>
+                <span>2.0×</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Slider 2: Tumour Core (TC) Size */}
+          <div className="size-slider-card tc-slider-card">
+            <div className="size-slider-header">
+              <div className="size-label-group">
+                <span className="size-dot dot-tc" />
+                <span className="size-title">TC Core Size</span>
+              </div>
+              <span className="size-val-pill tc-pill">
+                {(tumourScales?.TC ?? 1.0).toFixed(2)}× ({Math.round((tumourScales?.TC ?? 1.0) * 100)}%)
+              </span>
+            </div>
+            <div className="slider-track-wrap">
+              <input
+                type="range"
+                min="0.20"
+                max="2.00"
+                step="0.05"
+                value={tumourScales?.TC ?? 1.0}
+                onChange={(e) => handleScaleChange("TC", e.target.value)}
+                className="tumour-scale-slider tc-slider"
+              />
+              <div className="scale-marks-row">
+                <span>0.2×</span>
+                <span className="mark-center">1.0× (Base)</span>
+                <span>2.0×</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Slider 3: Enhancing Tumour (ET) Size */}
+          <div className="size-slider-card et-slider-card">
+            <div className="size-slider-header">
+              <div className="size-label-group">
+                <span className="size-dot dot-et" />
+                <span className="size-title">ET Enhancing Size</span>
+              </div>
+              <span className="size-val-pill et-pill">
+                {(tumourScales?.ET ?? 1.0).toFixed(2)}× ({Math.round((tumourScales?.ET ?? 1.0) * 100)}%)
+              </span>
+            </div>
+            <div className="slider-track-wrap">
+              <input
+                type="range"
+                min="0.20"
+                max="2.00"
+                step="0.05"
+                value={tumourScales?.ET ?? 1.0}
+                onChange={(e) => handleScaleChange("ET", e.target.value)}
+                className="tumour-scale-slider et-slider"
+              />
+              <div className="scale-marks-row">
+                <span>0.2×</span>
+                <span className="mark-center">1.0× (Base)</span>
+                <span>2.0×</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
